@@ -137,7 +137,7 @@ class Config extends DependencySerialization {
    * @param \Drupal\Core\Language\Language $language
    *   The language object used to override configuration data.
    */
-  public function __construct($name, StorageInterface $storage, EventDispatcherInterface $event_dispatcher, TypedConfigManager $typed_config, Language $language = NULL) {
+  public function __construct($name, StorageInterface $storage, EventDispatcherInterface $event_dispatcher, TypedConfigManagerInterface $typed_config, Language $language = NULL) {
     $this->name = $name;
     $this->storage = $storage;
     $this->eventDispatcher = $event_dispatcher;
@@ -201,13 +201,13 @@ class Config extends DependencySerialization {
   public static function validateName($name) {
     // The name must be namespaced by owner.
     if (strpos($name, '.') === FALSE) {
-      throw new ConfigNameException(format_string('Missing namespace in Config object name @name.', array(
+      throw new ConfigNameException(String::format('Missing namespace in Config object name @name.', array(
         '@name' => $name,
       )));
     }
     // The name must be shorter than Config::MAX_NAME_LENGTH characters.
     if (strlen($name) > self::MAX_NAME_LENGTH) {
-      throw new ConfigNameException(format_string('Config object name @name exceeds maximum allowed length of @length characters.', array(
+      throw new ConfigNameException(String::format('Config object name @name exceeds maximum allowed length of @length characters.', array(
         '@name' => $name,
         '@length' => self::MAX_NAME_LENGTH,
       )));
@@ -216,7 +216,7 @@ class Config extends DependencySerialization {
     // The name must not contain any of the following characters:
     // : ? * < > " ' / \
     if (preg_match('/[:?*<>"\'\/\\\\]/', $name)) {
-      throw new ConfigNameException(format_string('Invalid character in Config object name @name.', array(
+      throw new ConfigNameException(String::format('Invalid character in Config object name @name.', array(
         '@name' => $name,
       )));
     }
@@ -474,6 +474,9 @@ class Config extends DependencySerialization {
     $this->data = array();
     $this->storage->delete($this->name);
     $this->isNew = TRUE;
+    $this->settingsOverrides = array();
+    $this->languageOverrides = array();
+    $this->moduleOverrides = array();
     $this->resetOverriddenData();
     $this->eventDispatcher->dispatch(ConfigEvents::DELETE, new ConfigCrudEvent($this));
     $this->originalData = $this->data;
