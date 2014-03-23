@@ -445,7 +445,7 @@ class ViewExecutable extends DependencySerialization {
     $this->user = $user;
 
     // Add the default css for a view.
-    $this->element['#attached']['library'][] = array('views', 'views.module');
+    $this->element['#attached']['library'][] = 'views/views.module';
   }
 
   /**
@@ -1361,7 +1361,7 @@ class ViewExecutable extends DependencySerialization {
       // Let the themes play too, because pre render is a very themey thing.
       if (isset($GLOBALS['base_theme_info']) && isset($GLOBALS['theme'])) {
         foreach ($GLOBALS['base_theme_info'] as $base) {
-          $module_handler->invoke($base->name, 'views_pre_render', array($this));
+          $module_handler->invoke($base->getName(), 'views_pre_render', array($this));
         }
 
         $module_handler->invoke($GLOBALS['theme'], 'views_pre_render', array($this));
@@ -1385,7 +1385,7 @@ class ViewExecutable extends DependencySerialization {
     // Let the themes play too, because post render is a very themey thing.
     if (isset($GLOBALS['base_theme_info']) && isset($GLOBALS['theme'])) {
       foreach ($GLOBALS['base_theme_info'] as $base) {
-        $module_handler->invoke($base->name, 'views_post_render', array($this));
+        $module_handler->invoke($base->getName(), 'views_post_render', array($this));
       }
 
       $module_handler->invoke($GLOBALS['theme'], 'views_post_render', array($this));
@@ -2237,6 +2237,18 @@ class ViewExecutable extends DependencySerialization {
     }
 
     return FALSE;
+  }
+
+  /**
+   * Calculates dependencies for the view.
+   *
+   * @see \Drupal\views\Entity\View::calculateDependencies()
+   *
+   * @return array
+   *   An array of dependencies grouped by type (module, theme, entity).
+   */
+  public function calculateDependencies() {
+    return $this->storage->calculateDependencies();
   }
 
 }

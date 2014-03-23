@@ -48,13 +48,6 @@ class DateFormat extends ConfigEntityBase implements DateFormatInterface {
   public $id;
 
   /**
-   * The date format UUID.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The human-readable name of the date format entity.
    *
    * @var string
@@ -78,8 +71,8 @@ class DateFormat extends ConfigEntityBase implements DateFormatInterface {
   /**
    * {@inheritdoc}
    */
-  public function getExportProperties() {
-    $properties = parent::getExportProperties();
+  public function toArray() {
+    $properties = parent::toArray();
     $names = array(
       'locked',
       'pattern',

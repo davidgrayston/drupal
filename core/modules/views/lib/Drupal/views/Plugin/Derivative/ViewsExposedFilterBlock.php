@@ -65,7 +65,7 @@ class ViewsExposedFilterBlock implements ContainerDerivativeInterface {
   /**
    * Implements \Drupal\Component\Plugin\Derivative\DerivativeInterface::getDerivativeDefinition().
    */
-  public function getDerivativeDefinition($derivative_id, array $base_plugin_definition) {
+  public function getDerivativeDefinition($derivative_id, $base_plugin_definition) {
     if (!empty($this->derivatives) && !empty($this->derivatives[$derivative_id])) {
       return $this->derivatives[$derivative_id];
     }
@@ -76,7 +76,7 @@ class ViewsExposedFilterBlock implements ContainerDerivativeInterface {
   /**
    * Implements \Drupal\Component\Plugin\Derivative\DerivativeInterface::getDerivativeDefinitions().
    */
-  public function getDerivativeDefinitions(array $base_plugin_definition) {
+  public function getDerivativeDefinitions($base_plugin_definition) {
     // Check all Views for displays with an exposed filter block.
     foreach ($this->viewStorageController->loadMultiple() as $view) {
       // Do not return results for disabled views.
@@ -93,7 +93,6 @@ class ViewsExposedFilterBlock implements ContainerDerivativeInterface {
             $desc = t('Exposed form: @view-@display_id', array('@view' => $view->id(), '@display_id' => $display->display['id']));
             $this->derivatives[$delta] = array(
               'admin_label' => $desc,
-              'cache' => DRUPAL_NO_CACHE,
             );
             $this->derivatives[$delta] += $base_plugin_definition;
           }

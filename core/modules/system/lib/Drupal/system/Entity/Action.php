@@ -43,13 +43,6 @@ class Action extends ConfigEntityBase implements ActionConfigEntityInterface, En
   public $label;
 
   /**
-   * The UUID of the action.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The action type.
    *
    * @var string
@@ -150,8 +143,8 @@ class Action extends ConfigEntityBase implements ActionConfigEntityInterface, En
   /**
    * {@inheritdoc}
    */
-  public function getExportProperties() {
-    $properties = parent::getExportProperties();
+  public function toArray() {
+    $properties = parent::toArray();
     $names = array(
       'type',
       'plugin',

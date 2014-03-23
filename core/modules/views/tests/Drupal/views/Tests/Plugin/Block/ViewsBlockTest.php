@@ -15,9 +15,6 @@ use Drupal\block\Plugin\views\display\Block;
 if (!defined('BLOCK_LABEL_VISIBLE')) {
   define('BLOCK_LABEL_VISIBLE', 'visible');
 }
-if (!defined('DRUPAL_NO_CACHE')) {
-  define('DRUPAL_NO_CACHE', -1);
-}
 
 /**
  * Tests the views block plugin.
@@ -101,7 +98,7 @@ class ViewsBlockTest extends UnitTestCase {
       ->with($this->view)
       ->will($this->returnValue($this->executable));
 
-    $this->storageController = $this->getMockBuilder('Drupal\views\ViewStorageController')
+    $this->storageController = $this->getMockBuilder('Drupal\Core\Config\Entity\ConfigStorageController')
       ->disableOriginalConstructor()
       ->getMock();
 

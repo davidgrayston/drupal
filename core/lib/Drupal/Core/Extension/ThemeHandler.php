@@ -220,7 +220,7 @@ class ThemeHandler implements ThemeHandlerInterface {
         if (!isset($theme->status)) {
           $theme->status = 0;
         }
-        $this->list[$theme->name] = $theme;
+        $this->list[$theme->getName()] = $theme;
       }
     }
     return $this->list;
@@ -271,7 +271,6 @@ class ThemeHandler implements ThemeHandlerInterface {
     $sub_themes = array();
     // Read info files for each theme.
     foreach ($themes as $key => $theme) {
-      $theme->filename = $theme->uri;
       $theme->info = $this->infoParser->parse($theme->getPathname()) + $defaults;
 
       // Add the info file modification time, so it becomes available for
@@ -291,8 +290,8 @@ class ThemeHandler implements ThemeHandlerInterface {
       // Defaults to 'twig' (see $defaults above).
       $engine = $theme->info['engine'];
       if (isset($engines[$engine])) {
-        $theme->owner = $engines[$engine]->uri;
-        $theme->prefix = $engines[$engine]->name;
+        $theme->owner = $engines[$engine]->getExtensionPathname();
+        $theme->prefix = $engines[$engine]->getName();
       }
 
       // Prefix stylesheets, scripts, and screenshot with theme path.

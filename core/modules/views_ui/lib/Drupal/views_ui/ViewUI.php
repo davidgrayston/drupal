@@ -149,6 +149,13 @@ class ViewUI implements ViewStorageInterface {
   private $isSyncing = FALSE;
 
   /**
+   * Whether the config is being deleted through the uninstall process.
+   *
+   * @var bool
+   */
+  private $isUninstalling = FALSE;
+
+  /**
    * Constructs a View UI object.
    *
    * @param \Drupal\views\ViewStorageInterface $storage
@@ -207,8 +214,22 @@ class ViewUI implements ViewStorageInterface {
   /**
    * {@inheritdoc}
    */
+  public function setUninstalling($isUninstalling) {
+    $this->isUninstalling = $isUninstalling;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function isSyncing() {
     return $this->isSyncing;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isUninstalling() {
+    return $this->isUninstalling;
   }
 
   /**
@@ -712,7 +733,7 @@ class ViewUI implements ViewStorageInterface {
     // Assemble the preview, the query info, and the query statistics in the
     // requested order.
     $table = array(
-      '#theme' => 'table',
+      '#type' => 'table',
       '#prefix' => '<div class="views-query-info">',
       '#suffix' => '</div>',
     );
@@ -910,10 +931,10 @@ class ViewUI implements ViewStorageInterface {
   }
 
   /**
-   * Implements \Drupal\Core\Entity\EntityInterface::getExportProperties().
+   * {@inheritdoc}
    */
-  public function getExportProperties() {
-    return $this->storage->getExportProperties();
+  public function toArray() {
+    return $this->storage->toArray();
   }
 
 
@@ -1177,6 +1198,18 @@ class ViewUI implements ViewStorageInterface {
    */
   public function hasLinkTemplate($key) {
     return $this->storage->hasLinkTemplate($key);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConfigDependencyName() {
   }
 
 }

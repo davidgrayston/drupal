@@ -66,15 +66,6 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
   public $name;
 
   /**
-   * The field UUID.
-   *
-   * This is assigned automatically when the field is created.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The name of the entity type the field can be attached to.
    *
    * @var string
@@ -84,7 +75,7 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
   /**
    * The field type.
    *
-   * Example: text, number_integer.
+   * Example: text, integer.
    *
    * @var string
    */
@@ -246,7 +237,7 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
   /**
    * {@inheritdoc}
    */
-  public function getExportProperties() {
+  public function toArray() {
     $names = array(
       'id',
       'uuid',
@@ -261,6 +252,7 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
       'cardinality',
       'translatable',
       'indexes',
+      'dependencies',
     );
     $properties = array();
     foreach ($names as $name) {
@@ -282,10 +274,14 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
     unset($this->schema);
 
     if ($this->isNew()) {
-      return $this->preSaveNew($storage_controller);
+      $this->preSaveNew($storage_controller);
     }
     else {
-      return $this->preSaveUpdated($storage_controller);
+      $this->preSaveUpdated($storage_controller);
+    }
+    if (!$this->isSyncing()) {
+      // Ensure the correct dependencies are present.
+      $this->calculateDependencies();
     }
   }
 
@@ -337,6 +333,16 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    parent::calculateDependencies();
+    // Ensure the field is dependent on the providing module.
+    $this->addDependency('module', $this->module);
+    return $this->dependencies;
+  }
+
+  /**
    * Prepares saving an updated field definition.
    *
    * @param \Drupal\Core\Entity\EntityStorageControllerInterface $storage_controller
@@ -375,6 +381,15 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
   public function postSave(EntityStorageControllerInterface $storage_controller, $update = TRUE) {
     // Clear the cache.
     field_cache_clear();
+
+    if ($update) {
+      // Invalidate the render cache for all affected entities.
+      $entity_manager = \Drupal::entityManager();
+      $entity_type = $this->getTargetEntityTypeId();
+      if ($entity_manager->hasController($entity_type, 'view_builder')) {
+        $entity_manager->getViewBuilder($entity_type)->resetCache();
+      }
+    }
   }
 
   /**
@@ -409,12 +424,13 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
     $deleted_fields = $state->get('field.field.deleted') ?: array();
     foreach ($fields as $field) {
       if (!$field->deleted) {
-        $config = $field->getExportProperties();
+        $config = $field->toArray();
         $config['deleted'] = TRUE;
         $config['bundles'] = $field->getBundles();
         $deleted_fields[$field->uuid] = $config;
       }
     }
+
     $state->set('field.field.deleted', $deleted_fields);
   }
 
@@ -693,16 +709,16 @@ class FieldConfig extends ConfigEntityBase implements FieldConfigInterface {
    * @todo Investigate in https://drupal.org/node/2074253.
    */
   public function __sleep() {
-    // Only serialize properties from getExportProperties().
-    return array_keys(array_intersect_key($this->getExportProperties(), get_object_vars($this)));
+    // Only serialize properties from self::toArray().
+    return array_keys(array_intersect_key($this->toArray(), get_object_vars($this)));
   }
 
   /**
    * Implements the magic __wakeup() method.
    */
   public function __wakeup() {
-    // Run the values from getExportProperties() through __construct().
-    $values = array_intersect_key($this->getExportProperties(), get_object_vars($this));
+    // Run the values from self::toArray() through __construct().
+    $values = array_intersect_key($this->toArray(), get_object_vars($this));
     $this->__construct($values);
   }
 

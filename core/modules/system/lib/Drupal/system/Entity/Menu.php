@@ -38,13 +38,6 @@ class Menu extends ConfigEntityBase implements MenuInterface {
   public $id;
 
   /**
-   * The menu UUID.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The human-readable name of the menu entity.
    *
    * @var string
@@ -68,8 +61,8 @@ class Menu extends ConfigEntityBase implements MenuInterface {
   /**
    * {@inheritdoc}
    */
-  public function getExportProperties() {
-    $properties = parent::getExportProperties();
+  public function toArray() {
+    $properties = parent::toArray();
     // @todo Make $description protected and include it here, see
     //   https://drupal.org/node/2030645.
     $names = array(

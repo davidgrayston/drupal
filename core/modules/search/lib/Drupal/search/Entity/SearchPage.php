@@ -66,13 +66,6 @@ class SearchPage extends ConfigEntityBase implements SearchPageInterface, Entity
   public $label;
 
   /**
-   * The UUID of the search page entity.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The configuration of the search page entity.
    *
    * @var array
@@ -170,8 +163,8 @@ class SearchPage extends ConfigEntityBase implements SearchPageInterface, Entity
   /**
    * {@inheritdoc}
    */
-  public function getExportProperties() {
-    $properties = parent::getExportProperties();
+  public function toArray() {
+    $properties = parent::toArray();
     $names = array(
       'path',
       'weight',

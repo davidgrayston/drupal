@@ -169,9 +169,11 @@ abstract class DrupalUnitTestBase extends UnitTestBase {
     // Modules have been collected in reverse class hierarchy order; modules
     // defined by base classes should be sorted first. Then, merge the results
     // together.
-    $modules = array_reverse($modules);
-    $modules = call_user_func_array('array_merge_recursive', $modules);
-    $this->enableModules($modules, FALSE);
+    if ($modules) {
+      $modules = array_reverse($modules);
+      $modules = call_user_func_array('array_merge_recursive', $modules);
+      $this->enableModules($modules, FALSE);
+    }
     // In order to use theme functions default theme config needs to exist.
     \Drupal::config('system.theme')->set('default', 'stark');
 
@@ -343,20 +345,21 @@ abstract class DrupalUnitTestBase extends UnitTestBase {
   protected function enableModules(array $modules) {
     // Set the list of modules in the extension handler.
     $module_handler = $this->container->get('module_handler');
-    $module_filenames = $module_handler->getModuleList();
+
     // Write directly to active storage to avoid early instantiation of
     // the event dispatcher which can prevent modules from registering events.
     $active_storage =  \Drupal::service('config.storage');
     $system_config = $active_storage->read('system.module');
+
     foreach ($modules as $module) {
-      $module_filenames[$module] = drupal_get_filename('module', $module);
+      $module_handler->addModule($module, drupal_get_path('module', $module));
       // Maintain the list of enabled modules in configuration.
       $system_config['enabled'][$module] = 0;
     }
     $active_storage->write('system.module', $system_config);
-    $module_handler->setModuleList($module_filenames);
-    $module_handler->resetImplementations();
+
     // Update the kernel to make their services available.
+    $module_filenames = $module_handler->getModuleList();
     $this->kernel->updateModules($module_filenames, $module_filenames);
 
     // Ensure isLoaded() is TRUE in order to make _theme() work.

@@ -8,6 +8,7 @@
 namespace Drupal\simpletest;
 
 use Drupal\Component\Utility\Crypt;
+use Drupal\Component\Utility\Json;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\String;
 use Drupal\Core\DrupalKernel;
@@ -236,8 +237,7 @@ abstract class WebTestBase extends TestBase {
    *       );
    *     @endcode
    *   - title: Random string.
-   *   - comment: COMMENT_OPEN.
-   *   - changed: REQUEST_TIME.
+   *   - comment: CommentItemInterface::OPEN.
    *   - promote: NODE_NOT_PROMOTED.
    *   - log: Empty string.
    *   - status: NODE_PUBLISHED.
@@ -256,7 +256,6 @@ abstract class WebTestBase extends TestBase {
     $settings += array(
       'body'      => array(array()),
       'title'     => $this->randomName(8),
-      'changed'   => REQUEST_TIME,
       'promote'   => NODE_NOT_PROMOTED,
       'revision'  => 1,
       'log'       => '',
@@ -278,7 +277,7 @@ abstract class WebTestBase extends TestBase {
         $settings['uid'] = $this->loggedInUser->id();
       }
       else {
-        $user = \Drupal::currentUser() ?: $GLOBALS['user'];
+        $user = \Drupal::currentUser() ?: drupal_anonymous_user();
         $settings['uid'] = $user->id();
       }
     }
@@ -338,9 +337,6 @@ abstract class WebTestBase extends TestBase {
   /**
    * Creates a block instance based on default settings.
    *
-   * Note: Until this can be done programmatically, the active user account
-   * must have permission to administer blocks.
-   *
    * @param string $plugin_id
    *   The plugin ID of the block type for this block instance.
    * @param array $settings
@@ -358,6 +354,7 @@ abstract class WebTestBase extends TestBase {
    *   - region: 'sidebar_first'.
    *   - theme: The default theme.
    *   - visibility: Empty array.
+   *   - cache: array('max_age' => 0).
    *
    * @return \Drupal\block\Entity\Block
    *   The block entity.
@@ -374,6 +371,9 @@ abstract class WebTestBase extends TestBase {
       'label' => $this->randomName(8),
       'visibility' => array(),
       'weight' => 0,
+      'cache' => array(
+        'max_age' => 0,
+      ),
     );
     foreach (array('region', 'id', 'theme', 'plugin', 'visibility', 'weight') as $key) {
       $values[$key] = $settings[$key];
@@ -641,7 +641,7 @@ abstract class WebTestBase extends TestBase {
    * If a user is already logged in, then the current user is logged out before
    * logging in the specified user.
    *
-   * Please note that neither the global $user nor the passed-in user object is
+   * Please note that neither the current user nor the passed-in user object is
    * populated with data of the logged in user. If you need full access to the
    * user object after logging in, it must be updated manually. If you also need
    * access to the plain-text password of the user (set by drupalCreateUser()),
@@ -1427,7 +1427,7 @@ abstract class WebTestBase extends TestBase {
    */
   protected function drupalGetJSON($path, array $options = array(), array $headers = array()) {
     $headers[] = 'Accept: application/json';
-    return drupal_json_decode($this->drupalGet($path, $options, $headers));
+    return Json::decode($this->drupalGet($path, $options, $headers));
   }
 
   /**
@@ -1435,7 +1435,7 @@ abstract class WebTestBase extends TestBase {
    */
   protected function drupalGetAJAX($path, array $options = array(), array $headers = array()) {
     $headers[] = 'Accept: application/vnd.drupal-ajax';
-    return drupal_json_decode($this->drupalGet($path, $options, $headers));
+    return Json::decode($this->drupalGet($path, $options, $headers));
   }
 
   /**
@@ -1708,7 +1708,7 @@ abstract class WebTestBase extends TestBase {
     }
 
     // Submit the POST request.
-    $return = drupal_json_decode($this->drupalPostForm(NULL, $edit, array('path' => $ajax_path, 'triggering_element' => $triggering_element), $options, $headers, $form_html_id, $extra_post));
+    $return = Json::decode($this->drupalPostForm(NULL, $edit, array('path' => $ajax_path, 'triggering_element' => $triggering_element), $options, $headers, $form_html_id, $extra_post));
 
     // Change the page content by applying the returned commands.
     if (!empty($ajax_settings) && !empty($return)) {
@@ -2588,7 +2588,7 @@ abstract class WebTestBase extends TestBase {
     $this->elements = FALSE;
     $this->drupalSettings = array();
     if (preg_match('/var drupalSettings = (.*?);$/m', $content, $matches)) {
-      $this->drupalSettings = drupal_json_decode($matches[1]);
+      $this->drupalSettings = Json::decode($matches[1]);
     }
   }
 

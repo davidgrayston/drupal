@@ -50,15 +50,6 @@ class Language extends ConfigEntityBase implements LanguageInterface {
   public $id;
 
   /**
-   * The language UUID.
-   *
-   * This is assigned automatically when the language is created.
-   *
-   * @var string
-   */
-  public $uuid;
-
-  /**
    * The human-readable label for the language.
    *
    * @var string
@@ -105,7 +96,7 @@ class Language extends ConfigEntityBase implements LanguageInterface {
   public static function preDelete(EntityStorageControllerInterface $storage_controller, array $entities) {
     $default_language = \Drupal::service('language.default')->get();
     foreach ($entities as $entity) {
-      if ($entity->id() == $default_language->id) {
+      if ($entity->id() == $default_language->id && !$entity->isUninstalling()) {
         throw new DeleteDefaultLanguageException('Can not delete the default language');
       }
     }

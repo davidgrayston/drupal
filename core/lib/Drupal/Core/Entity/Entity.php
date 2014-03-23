@@ -320,6 +320,9 @@ abstract class Entity implements EntityInterface {
    */
   public function postSave(EntityStorageControllerInterface $storage_controller, $update = TRUE) {
     $this->onSaveOrDelete();
+    if ($update) {
+      $this->onUpdateBundleEntity();
+    }
   }
 
   /**
@@ -382,6 +385,21 @@ abstract class Entity implements EntityInterface {
   }
 
   /**
+   * Acts on entities of which this entity is a bundle entity type.
+   */
+  protected function onUpdateBundleEntity() {
+    // If this entity is a bundle entity type of another entity type, and we're
+    // updating an existing entity, and that other entity type has a view
+    // builder class, then invalidate the render cache of entities for which
+    // this entity is a bundle.
+    $bundle_of = $this->getEntityType()->getBundleOf();
+    $entity_manager = \Drupal::entityManager();
+    if ($bundle_of !== FALSE && $entity_manager->hasController($bundle_of, 'view_builder')) {
+      $entity_manager->getViewBuilder($bundle_of)->resetCache();
+    }
+  }
+
+  /**
    * Wraps the URL generator.
    *
    * @return \Drupal\Core\Routing\UrlGeneratorInterface
@@ -402,6 +420,22 @@ abstract class Entity implements EntityInterface {
     $this->urlGenerator = NULL;
 
     return array_keys(get_object_vars($this));
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getOriginalId() {
+    // By default, entities do not support renames and do not have original IDs.
+    return NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setOriginalId($id) {
+    // By default, entities do not support renames and do not have original IDs.
+    return $this;
   }
 
 }

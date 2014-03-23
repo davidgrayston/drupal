@@ -7,10 +7,12 @@
 
 namespace Drupal\block\Entity;
 
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\block\BlockPluginBag;
 use Drupal\block\BlockInterface;
 use Drupal\Core\Config\Entity\EntityWithPluginBagInterface;
+use Drupal\Core\Entity\EntityStorageControllerInterface;
 
 /**
  * Defines a Block configuration entity class.
@@ -47,13 +49,6 @@ class Block extends ConfigEntityBase implements BlockInterface, EntityWithPlugin
    * @var string
    */
   public $id;
-
-  /**
-   * The block UUID.
-   *
-   * @var string
-   */
-  public $uuid;
 
   /**
    * The plugin instance settings.
@@ -134,10 +129,10 @@ class Block extends ConfigEntityBase implements BlockInterface, EntityWithPlugin
   }
 
   /**
-   * Overrides \Drupal\Core\Config\Entity\ConfigEntityBase::getExportProperties();
+   * {@inheritdoc}
    */
-  public function getExportProperties() {
-    $properties = parent::getExportProperties();
+  public function toArray() {
+    $properties = parent::toArray();
     $names = array(
       'theme',
       'region',
@@ -150,6 +145,32 @@ class Block extends ConfigEntityBase implements BlockInterface, EntityWithPlugin
       $properties[$name] = $this->get($name);
     }
     return $properties;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function postSave(EntityStorageControllerInterface $storage_controller, $update = TRUE) {
+    parent::postSave($storage_controller, $update);
+
+    if ($update) {
+      Cache::invalidateTags(array('block' => $this->id()));
+    }
+    // When placing a new block, invalidate all cache entries for this theme,
+    // since any page that uses this theme might be affected.
+    else {
+      // @todo Replace with theme cache tag: https://drupal.org/node/2185617
+      Cache::invalidateTags(array('content' => TRUE));
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function postDelete(EntityStorageControllerInterface $storage_controller, array $entities) {
+    parent::postDelete($storage_controller, $entities);
+
+    Cache::invalidateTags(array('block' => array_keys($entities)));
   }
 
   /**
@@ -170,6 +191,15 @@ class Block extends ConfigEntityBase implements BlockInterface, EntityWithPlugin
     }
     // Sort by label.
     return strcmp($a->label(), $b->label());
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    parent::calculateDependencies();
+    $this->addDependency('theme', $this->theme);
+    return $this->dependencies;
   }
 
 }

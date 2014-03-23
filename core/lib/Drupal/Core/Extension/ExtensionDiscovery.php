@@ -165,7 +165,7 @@ class ExtensionDiscovery {
     foreach ($files as $key => $file) {
       // If the extension does not belong to a profile, just apply the weight
       // of the originating directory.
-      if (strpos($file->getSubPath(), 'profiles') !== 0) {
+      if (strpos($file->subpath, 'profiles') !== 0) {
         $origins[$key] = $origin_weights[$file->origin];
         $profiles[$key] = NULL;
       }
@@ -278,14 +278,14 @@ class ExtensionDiscovery {
     // e.g. new modules were introduced in core while older contrib modules with
     // the same name still exist in a later search path.
     foreach ($all_files as $file) {
-      if (isset($files[$file->name])) {
+      if (isset($files[$file->getName()])) {
         // Skip the extension if it is incompatible with Drupal core.
         $info = $this->getInfoParser()->parse($file->getPathname());
         if (!isset($info['core']) || $info['core'] != \Drupal::CORE_COMPATIBILITY) {
           continue;
         }
       }
-      $files[$file->name] = $file;
+      $files[$file->getName()] = $file;
     }
     return $files;
   }
@@ -366,25 +366,23 @@ class ExtensionDiscovery {
       $name = $fileinfo->getBasename('.info.yml');
       $pathname = $dir_prefix . $fileinfo->getSubPathname();
 
-      // Supply main extension filename being used throughout Drupal.
-      // For themes, the filename is the info file itself.
-      if ($type == 'theme') {
-        $filename = $fileinfo->getFilename();
-      }
+      // Determine whether the extension has a main extension file.
       // For theme engines, the file extension is .engine.
-      elseif ($type == 'theme_engine') {
+      if ($type == 'theme_engine') {
         $filename = $name . '.engine';
       }
-      // Otherwise, it is .module/.profile; i.e., the extension type.
+      // For profiles/modules/themes, it is the extension type.
       else {
         $filename = $name . '.' . $type;
       }
+      if (!file_exists(dirname($pathname) . '/' . $filename)) {
+        $filename = NULL;
+      }
 
       $extension = new Extension($type, $pathname, $filename);
-      // Inject the existing RecursiveDirectoryIterator object to avoid
-      // unnecessary creation of additional SplFileInfo resources.
-      $extension->setSplFileInfo($fileinfo);
+
       // Track the originating directory for sorting purposes.
+      $extension->subpath = $fileinfo->getSubPath();
       $extension->origin = $dir;
 
       $files[$type][$key] = $extension;

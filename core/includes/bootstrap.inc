@@ -6,7 +6,7 @@ use Drupal\Component\Utility\Settings;
 use Drupal\Component\Utility\String;
 use Drupal\Component\Utility\Timer;
 use Drupal\Component\Utility\Unicode;
-use Drupal\Component\Utility\Url;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\Database\Database;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
@@ -184,13 +184,6 @@ const DRUPAL_EXTENSION_NAME_MAX_LENGTH = 50;
 define('REQUEST_TIME', (int) $_SERVER['REQUEST_TIME']);
 
 /**
- * Flag for drupal_set_title(); text has already been sanitized.
- *
- * @todo Move to the Title class.
- */
-const PASS_THROUGH = -1;
-
-/**
  * Regular expression to match PHP function names.
  *
  * @see http://php.net/manual/language.functions.php
@@ -345,75 +338,6 @@ function config_get_config_directory($type = CONFIG_ACTIVE_DIRECTORY) {
     return $config_directories[$type];
   }
   throw new Exception(format_string('The configuration directory type %type does not exist.', array('%type' => $type)));
-}
-
-/**
- * Sets appropriate server variables needed for command line scripts to work.
- *
- * This function can be called by command line scripts before bootstrapping
- * Drupal, to ensure that the page loads with the desired server parameters.
- * This is because many parts of Drupal assume that they are running in a web
- * browser and therefore use information from the global PHP $_SERVER variable
- * that does not get set when Drupal is run from the command line.
- *
- * In many cases, the default way in which this function populates the $_SERVER
- * variable is sufficient, and it can therefore be called without passing in
- * any input. However, command line scripts running on a multisite installation
- * (or on any installation that has settings.php stored somewhere other than
- * the sites/default folder) need to pass in the URL of the site to allow
- * Drupal to detect the correct location of the settings.php file. Passing in
- * the 'url' parameter is also required for functions like request_uri() to
- * return the expected values.
- *
- * Most other parameters do not need to be passed in, but may be necessary in
- * some cases; for example, if \Drupal::request()->getClientIP()
- * needs to return anything but the standard localhost value ('127.0.0.1'),
- * the command line script should pass in the desired value via the
- * 'REMOTE_ADDR' key.
- *
- * @param $variables
- *   (optional) An associative array of variables within
- *   \Drupal::request()->server that should be replaced. If the special element
- *   'url' is provided in this array, it will be used to populate some of the
- *   server defaults; it should be set to the URL of the current page request,
- *   excluding any GET request but including the script name
- *   (e.g., http://www.example.com/mysite/index.php).
- *
- * @see conf_path()
- * @see request_uri()
- * @see \Symfony\Component\HttpFoundation\Request::getClientIP()
- */
-function drupal_override_server_variables($variables = array()) {
-  $request = \Drupal::request();
-  $server_vars = $request->server->all();
-  // Allow the provided URL to override any existing values in $_SERVER.
-  if (isset($variables['url'])) {
-    $url = parse_url($variables['url']);
-    if (isset($url['host'])) {
-      $server_vars['HTTP_HOST'] = $url['host'];
-    }
-    if (isset($url['path'])) {
-      $server_vars['SCRIPT_NAME'] = $url['path'];
-    }
-    unset($variables['url']);
-  }
-  // Define default values for $_SERVER keys. These will be used if $_SERVER
-  // does not already define them and no other values are passed in to this
-  // function.
-  $defaults = array(
-    'HTTP_HOST' => 'localhost',
-    'SCRIPT_NAME' => NULL,
-    'REMOTE_ADDR' => '127.0.0.1',
-    'REQUEST_METHOD' => 'GET',
-    'SERVER_NAME' => NULL,
-    'SERVER_SOFTWARE' => NULL,
-    'HTTP_USER_AGENT' => NULL,
-  );
-  // Replace elements of the $_SERVER array, as appropriate.
-  $request->server->replace($variables + $server_vars + $defaults);
-
-  // @todo remove once conf_path() no longer uses $_SERVER.
-  $_SERVER = $request->server->all();
 }
 
 /**
@@ -628,9 +552,9 @@ function _drupal_request_initialize() {
  * configuration. For example, a module 'foo' may legally be located
  * in any of these three places:
  *
- * core/modules/foo/foo.module
- * modules/foo/foo.module
- * sites/example.com/modules/foo/foo.module
+ * core/modules/foo/foo.info.yml
+ * modules/foo/foo.info.yml
+ * sites/example.com/modules/foo/foo.info.yml
  *
  * Calling drupal_get_filename('module', 'foo') will give you one of
  * the above, depending on where the module is located.
@@ -670,7 +594,9 @@ function drupal_get_filename($type, $name, $filename = NULL) {
     // providers first.
     // Retrieve the current module list (derived from the service container).
     if ($type == 'module' && \Drupal::hasService('module_handler')) {
-      $files[$type] += \Drupal::moduleHandler()->getModuleList();
+      foreach (\Drupal::moduleHandler()->getModuleList() as $module_name => $module) {
+        $files[$type][$module_name] = $module->getPathname();
+      }
     }
     // If still unknown, retrieve the file list prepared in state by
     // system_rebuild_module_data() and system_rebuild_theme_data().
@@ -685,7 +611,7 @@ function drupal_get_filename($type, $name, $filename = NULL) {
         $listing->setProfileDirectories(array());
       }
       foreach ($listing->scan($original_type) as $extension_name => $file) {
-        $files[$type][$extension_name] = $file->uri;
+        $files[$type][$extension_name] = $file->getPathname();
       }
     }
   }
@@ -974,6 +900,13 @@ function drupal_serve_page_from_cache(stdClass $cache, Response $response, Reque
   // max-age > 0, allowing the page to be cached by external proxies, when a
   // session cookie is present unless the Vary header has been replaced.
   $max_age = !$request->cookies->has(session_name()) || isset($boot_headers['vary']) ? $config->get('cache.page.max_age') : 0;
+  // RFC 2616, section 14.21 says: 'To mark a response as "never expires," an
+  // origin server sends an Expires date approximately one year from the time
+  // the response is sent. HTTP/1.1 servers SHOULD NOT send Expires dates more
+  // than one year in the future.'
+  if ($max_age > 31536000 || $max_age === \Drupal\Core\Cache\Cache::PERMANENT) {
+    $max_age = 31536000;
+  }
   $response->headers->set('Cache-Control', 'public, max-age=' . $max_age);
 
   // Entity tag should change if the output changes.
@@ -1397,46 +1330,6 @@ function drupal_get_messages($type = NULL, $clear_queue = TRUE) {
     }
   }
   return array();
-}
-
-/**
- * Gets the title of the current page.
- *
- * The title is displayed on the page and in the title bar.
- *
- * @return
- *   The current page's title.
- */
-function drupal_get_title() {
-  return drupal_set_title() ?: '';
-}
-
-/**
- * Sets the title of the current page.
- *
- * The title is displayed on the page and in the title bar.
- *
- * @param $title
- *   Optional string value to assign to the page title; or if set to NULL
- *   (default), leaves the current title unchanged.
- * @param $output
- *   Optional flag - normally should be left as Title::CHECK_PLAIN. Only set to
- *   PASS_THROUGH if you have already removed any possibly dangerous code
- *   from $title using a function like
- *   \Drupal\Component\Utility\String::checkPlain() or filter_xss(). With this
- *   flag the string will be passed through unchanged.
- *
- * @return
- *   The updated title of the current page.
- */
-function drupal_set_title($title = NULL, $output = Title::CHECK_PLAIN) {
-  $stored_title = &drupal_static(__FUNCTION__);
-
-  if (isset($title)) {
-    $stored_title = ($output == PASS_THROUGH) ? $title : String::checkPlain($title);
-  }
-
-  return $stored_title;
 }
 
 /**
@@ -2006,15 +1899,6 @@ function drupal_installation_attempted() {
   // executed code does not involve the installer at all.
   // @see install_drupal()
   return isset($GLOBALS['install_state']) && empty($GLOBALS['install_state']['installation_finished']);
-}
-
-/**
- * Initializes all the defined language types and sets the default langcode.
- */
-function drupal_language_initialize() {
-  $language_manager = \Drupal::languageManager();
-  $language_manager->init();
-  \Drupal::translation()->setDefaultLangcode($language_manager->getCurrentLanguage()->id);
 }
 
 /**

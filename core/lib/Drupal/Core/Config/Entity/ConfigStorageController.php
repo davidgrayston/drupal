@@ -35,7 +35,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   after the config_prefix in a config name forms the entity ID. Additional or
  *   custom suffixes are not possible.
  */
-class ConfigStorageController extends EntityStorageControllerBase implements ConfigStorageControllerInterface {
+class ConfigStorageController extends EntityStorageControllerBase implements ConfigStorageControllerInterface, ImportableEntityStorageInterface {
 
   /**
    * The UUID service.
@@ -66,13 +66,6 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
   protected $configStorage;
 
   /**
-   * The entity query factory.
-   *
-   * @var \Drupal\Core\Entity\Query\QueryFactory
-   */
-  protected $entityQueryFactory;
-
-  /**
    * Constructs a ConfigStorageController object.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
@@ -81,12 +74,10 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
    *   The config factory service.
    * @param \Drupal\Core\Config\StorageInterface $config_storage
    *   The config storage service.
-   * @param \Drupal\Core\Entity\Query\QueryFactory $entity_query_factory
-   *   The entity query factory.
    * @param \Drupal\Component\Uuid\UuidInterface $uuid_service
    *   The UUID service.
    */
-  public function __construct(EntityTypeInterface $entity_type, ConfigFactoryInterface $config_factory, StorageInterface $config_storage, QueryFactory $entity_query_factory, UuidInterface $uuid_service) {
+  public function __construct(EntityTypeInterface $entity_type, ConfigFactoryInterface $config_factory, StorageInterface $config_storage, UuidInterface $uuid_service) {
     parent::__construct($entity_type);
 
     $this->idKey = $this->entityType->getKey('id');
@@ -94,7 +85,6 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
 
     $this->configFactory = $config_factory;
     $this->configStorage = $config_storage;
-    $this->entityQueryFactory = $entity_query_factory;
     $this->uuidService = $uuid_service;
   }
 
@@ -106,7 +96,6 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
       $entity_type,
       $container->get('config.factory'),
       $container->get('config.storage'),
-      $container->get('entity.query'),
       $container->get('uuid')
     );
   }
@@ -170,13 +159,6 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
    */
   public function deleteRevision($revision_id) {
     return NULL;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getQuery($conjunction = 'AND') {
-    return $this->entityQueryFactory->get($this->entityTypeId, $conjunction);
   }
 
   /**
@@ -325,16 +307,7 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
     }
 
     if (!$config->isNew() && !isset($entity->original)) {
-      $this->resetCache(array($id));
-      $entity->original = $this->load($id);
-    }
-
-    if ($id !== $entity->id()) {
-      // Renaming a config object needs to cater for:
-      // - Storage controller needs to access the original object.
-      // - The object needs to be renamed/copied in ConfigFactory and reloaded.
-      // - All instances of the object need to be renamed.
-      $config = $this->configFactory->rename($prefix . $id, $prefix . $entity->id());
+      $entity->original = $this->loadUnchanged($id);
     }
 
     // Build an ID if none is set.
@@ -345,8 +318,16 @@ class ConfigStorageController extends EntityStorageControllerBase implements Con
     $entity->preSave($this);
     $this->invokeHook('presave', $entity);
 
+    if ($id !== $entity->id()) {
+      // Renaming a config object needs to cater for:
+      // - Storage controller needs to access the original object.
+      // - The object needs to be renamed/copied in ConfigFactory and reloaded.
+      // - All instances of the object need to be renamed.
+      $config = $this->configFactory->rename($prefix . $id, $prefix . $entity->id());
+    }
+
     // Retrieve the desired properties and set them in config.
-    foreach ($entity->getExportProperties() as $key => $value) {
+    foreach ($entity->toArray() as $key => $value) {
       $config->set($key, $value);
     }
 

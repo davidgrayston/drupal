@@ -4,6 +4,24 @@ services:
     arguments: ['@settings']
     calls:
       - [setContainer, ['@service_container']]
+  cache_contexts:
+    class: Drupal\Core\Cache\CacheContexts
+    arguments: ['@service_container', '%cache_contexts%' ]
+  cache_context.url:
+    class: Drupal\Core\Cache\UrlCacheContext
+    arguments: ['@request']
+    tags:
+      - { name: cache.context}
+  cache_context.language:
+    class: Drupal\Core\Cache\LanguageCacheContext
+    arguments: ['@language_manager']
+    tags:
+      - { name: cache.context}
+  cache_context.theme:
+    class: Drupal\Core\Cache\ThemeCacheContext
+    arguments: ['@request', '@theme.negotiator']
+    tags:
+      - { name: cache.context}
   cache.backend.database:
     class: Drupal\Core\Cache\DatabaseBackendFactory
     arguments: ['@database']
@@ -18,7 +36,6 @@ services:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-      - { name: persist }
     factory_method: get
     factory_service: cache_factory
     arguments: [config]
@@ -70,16 +87,13 @@ services:
     factory_method: getActive
   config.manager:
     class: Drupal\Core\Config\ConfigManager
-    arguments: ['@entity.manager', '@config.factory', '@config.typed', '@string_translation']
+    arguments: ['@entity.manager', '@config.factory', '@config.typed', '@string_translation', '@config.storage']
   config.storage:
     class: Drupal\Core\Config\CachedStorage
     arguments: ['@config.cachedstorage.storage', '@cache.config']
-    tags:
-      - { name: persist }
   config.factory:
     class: Drupal\Core\Config\ConfigFactory
     tags:
-      - { name: persist }
       - { name: event_subscriber }
     arguments: ['@config.storage', '@event_dispatcher', '@config.typed']
   config.installer:
@@ -134,8 +148,6 @@ services:
   state:
     class: Drupal\Core\KeyValueStore\State
     arguments: ['@keyvalue']
-    tags:
-      - { name: persist }
   queue:
     class: Drupal\Core\Queue\QueueFactory
     arguments: ['@settings']
@@ -183,12 +195,17 @@ services:
   default_plugin_manager:
     abstract: true
     arguments: ['@container.namespaces', '@cache.cache', '@language_manager', '@module_handler']
+  module_handler:
+    class: Drupal\Core\Extension\CachedModuleHandler
+    arguments: ['%container.modules%', '@state', '@cache.bootstrap']
   theme_handler:
     class: Drupal\Core\Extension\ThemeHandler
     arguments: ['@config.factory', '@module_handler', '@cache.cache', '@info_parser', '@config.installer', '@router.builder']
   entity.manager:
     class: Drupal\Core\Entity\EntityManager
     arguments: ['@container.namespaces', '@service_container', '@module_handler', '@cache.cache', '@language_manager', '@string_translation']
+    tags:
+      - { name: plugin_manager_cache_clear }
   entity.form_builder:
     class: Drupal\Core\Entity\EntityFormBuilder
     arguments: ['@entity.manager', '@form_builder']
@@ -216,6 +233,8 @@ services:
   plugin.manager.menu.contextual_link:
     class: Drupal\Core\Menu\ContextualLinkManager
     arguments: ['@controller_resolver', '@module_handler', '@cache.cache', '@language_manager', '@access_manager', '@current_user']
+  plugin.cache_clearer:
+    class: Drupal\Core\Plugin\CachedDiscoveryClearer
   request:
     class: Symfony\Component\HttpFoundation\Request
     synthetic: true
@@ -260,6 +279,8 @@ services:
     parent: default_plugin_manager
     calls:
       - [setValidationConstraintManager, ['@validation.constraint']]
+    tags:
+      - { name: plugin_manager_cache_clear }
   validation.constraint:
     class: Drupal\Core\Validation\ConstraintManager
     parent: default_plugin_manager
@@ -273,6 +294,10 @@ services:
     class: Symfony\Component\Routing\RequestContext
     calls:
       - [fromRequest, ['@request']]
+  router.admin_context:
+    class: Drupal\Core\Routing\AdminContext
+    calls:
+      - [setRequest, ['@?request=']]
   router.route_provider:
     class: Drupal\Core\Routing\RouteProvider
     arguments: ['@database', '@router.builder']
@@ -349,8 +374,13 @@ services:
   password:
     class: Drupal\Core\Password\PhpassHashedPassword
     arguments: [16]
-  mime_type_matcher:
-    class: Drupal\Core\Routing\MimeTypeMatcher
+  accept_header_matcher:
+    class: Drupal\Core\Routing\AcceptHeaderMatcher
+    arguments: ['@content_negotiation']
+    tags:
+      - { name: route_filter }
+  content_type_header_matcher:
+    class: Drupal\Core\Routing\ContentTypeHeaderMatcher
     tags:
       - { name: route_filter }
   paramconverter_manager:
@@ -422,6 +452,10 @@ services:
       - { name: route_enhancer, priority: 10 }
   route_special_attributes_subscriber:
     class: Drupal\Core\EventSubscriber\SpecialAttributesRouteSubscriber
+    tags:
+      - { name: event_subscriber }
+  route_http_method_subscriber:
+    class: Drupal\Core\EventSubscriber\RouteMethodSubscriber
     tags:
       - { name: event_subscriber }
   controller.page:
@@ -611,13 +645,9 @@ services:
   image.toolkit.manager:
     class: Drupal\Core\ImageToolkit\ImageToolkitManager
     arguments: ['@container.namespaces', '@cache.cache', '@language_manager', '@config.factory', '@module_handler']
-  image.toolkit:
-    class: Drupal\Core\ImageToolkit\ImageToolkitInterface
-    factory_method: getDefaultToolkit
-    factory_service: image.toolkit.manager
   image.factory:
     class: Drupal\Core\Image\ImageFactory
-    arguments: ['@image.toolkit']
+    arguments: ['@image.toolkit.manager']
   breadcrumb:
     class: Drupal\Core\Breadcrumb\BreadcrumbManager
     arguments: ['@module_handler']

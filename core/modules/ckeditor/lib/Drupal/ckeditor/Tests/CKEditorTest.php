@@ -124,9 +124,10 @@ class CKEditorTest extends DrupalUnitTestBase {
 
     // Change the allowed HTML tags; the "allowedContent" and "format_tags"
     // settings for CKEditor should automatically be updated as well.
-    $format = entity_load('filter_format', 'filtered_html');
+    $format = $editor->getFilterFormat();
     $format->filters('filter_html')->settings['allowed_html'] .= '<pre> <h3>';
     $format->save();
+
     $expected_config['allowedContent']['pre'] = array('attributes' => TRUE, 'styles' => FALSE, 'classes' => TRUE);
     $expected_config['allowedContent']['h3'] = array('attributes' => TRUE, 'styles' => FALSE, 'classes' => TRUE);
     $expected_config['format_tags'] = 'p;h3;h4;h5;h6;pre';
@@ -135,6 +136,7 @@ class CKEditorTest extends DrupalUnitTestBase {
     // Disable the filter_html filter: allow *all *tags.
     $format->setFilterConfig('filter_html', array('status' => 0));
     $format->save();
+
     $expected_config['allowedContent'] = TRUE;
     $expected_config['format_tags'] = 'p;h1;h2;h3;h4;h5;h6;pre';
     $this->assertIdentical($expected_config, $this->ckeditor->getJSSettings($editor), 'Generated JS settings are correct for customized configuration.');
@@ -168,6 +170,7 @@ class CKEditorTest extends DrupalUnitTestBase {
       ),
     ));
     $format->save();
+
     $expected_config['allowedContent'] = array(
       'p' => array(
         'attributes' => TRUE,
