@@ -7,7 +7,7 @@ region: footer
 plugin: 'system_menu_block:footer'
 settings:
   label: 'Footer menu'
-  module: system
+  provider: system
   label_display: visible
 visibility:
   path:
@@ -20,6 +20,8 @@ visibility:
       article: '0'
       page: '0'
 dependencies:
+  entity:
+    - system.menu.footer
   module:
     - system
   theme:

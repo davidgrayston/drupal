@@ -7,7 +7,7 @@ region: sidebar_first
 plugin: 'system_menu_block:tools'
 settings:
   label: Tools
-  module: system
+  provider: system
   label_display: visible
 visibility:
   path:
@@ -20,6 +20,8 @@ visibility:
       article: '0'
       page: '0'
 dependencies:
+  entity:
+    - system.menu.tools
   module:
     - system
   theme:

@@ -190,7 +190,7 @@ class Drupal {
   /**
    * Gets the current active user.
    *
-   * @return \Drupal\Core\Session\AccountInterface
+   * @return \Drupal\Core\Session\AccountProxyInterface
    */
   public static function currentUser() {
     return static::$container->get('current_user');
@@ -221,14 +221,14 @@ class Drupal {
    *
    * @param string $bin
    *   (optional) The cache bin for which the cache object should be returned,
-   *   defaults to 'cache'.
+   *   defaults to 'default'.
    *
    * @return \Drupal\Core\Cache\CacheBackendInterface
    *   The cache object associated with the specified bin.
    *
    * @ingroup cache
    */
-  public static function cache($bin = 'cache') {
+  public static function cache($bin = 'default') {
     return static::$container->get('cache.' . $bin);
   }
 
@@ -345,7 +345,7 @@ class Drupal {
   /**
    * Returns the default http client.
    *
-   * @return \Guzzle\Http\ClientInterface
+   * @return \GuzzleHttp\ClientInterface
    *   A guzzle http client instance.
    */
   public static function httpClient() {
@@ -379,7 +379,7 @@ class Drupal {
    *   AND if all conditions in the query need to apply, OR if any of them is
    *   enough. Optional, defaults to AND.
    *
-   * @return \Drupal\Core\Entity\Query\QueryInterface
+   * @return \Drupal\Core\Entity\Query\QueryAggregateInterface
    *   The query object that can query the given entity type.
    */
   public static function entityQueryAggregate($entity_type, $conjunction = 'AND') {
@@ -586,7 +586,7 @@ class Drupal {
    * @return \Drupal\Core\Access\CsrfTokenGenerator
    *   The CSRF token manager.
    *
-   * @see drupal_session_start()
+   * @see \Drupal\Core\Session\SessionManager::start()
    */
   public static function csrfToken() {
     return static::$container->get('csrf_token');
@@ -610,6 +610,16 @@ class Drupal {
    */
   public static function formBuilder() {
     return static::$container->get('form_builder');
+  }
+
+  /**
+   * Gets the syncing state.
+   *
+   * @return bool
+   *   Returns TRUE is syncing flag set.
+   */
+  public function isConfigSyncing() {
+    return static::$container->get('config.installer')->isSyncing();
   }
 
 }

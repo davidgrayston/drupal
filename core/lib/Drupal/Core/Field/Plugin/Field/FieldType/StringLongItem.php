@@ -16,7 +16,7 @@ use Drupal\Core\Field\FieldDefinitionInterface;
  *   id = "string_long",
  *   label = @Translation("Long string"),
  *   description = @Translation("An entity field containing a long string value."),
- *   configurable = FALSE
+ *   no_ui = TRUE
  * )
  */
 class StringLongItem extends StringItem {
@@ -30,8 +30,6 @@ class StringLongItem extends StringItem {
         'value' => array(
           'type' => 'text',
           'size' => 'big',
-          'not null' => TRUE,
-          'default' => '',
         ),
       ),
     );

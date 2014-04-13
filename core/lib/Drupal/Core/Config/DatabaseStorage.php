@@ -11,7 +11,7 @@ use Drupal\Core\Database\Database;
 use Drupal\Core\Database\Connection;
 
 /**
- * Defines the Database storage controller.
+ * Defines the Database storage.
  */
 class DatabaseStorage implements StorageInterface {
 
@@ -37,7 +37,7 @@ class DatabaseStorage implements StorageInterface {
   protected $options = array();
 
   /**
-   * Constructs a new DatabaseStorage controller.
+   * Constructs a new DatabaseStorage.
    *
    * @param \Drupal\Core\Database\Connection $connection
    *   A Database connection to use for reading and writing configuration data.

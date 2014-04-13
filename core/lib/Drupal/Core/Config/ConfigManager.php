@@ -93,6 +93,13 @@ class ConfigManager implements ConfigManagerInterface {
   /**
    * {@inheritdoc}
    */
+  public function getConfigFactory() {
+    return $this->configFactory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function diff(StorageInterface $source_storage, StorageInterface $target_storage, $name) {
     // @todo Replace with code that can be autoloaded.
     //   https://drupal.org/node/1848266
@@ -188,7 +195,7 @@ class ConfigManager implements ConfigManagerInterface {
     $definitions = $this->entityManager->getDefinitions();
     foreach ($dependencies as $config_name => $dependency) {
       // Group by entity type to efficient load entities using
-      // \Drupal\Core\Entity\EntityStorageControllerInterface::loadMultiple().
+      // \Drupal\Core\Entity\EntityStorageInterface::loadMultiple().
       $entity_type_id = $this->getEntityTypeIdByName($config_name);
       // It is possible that a non-configuration entity will be returned if a
       // simple configuration object has a UUID key. This would occur if the
@@ -201,10 +208,10 @@ class ConfigManager implements ConfigManagerInterface {
     }
     $entities_to_return = array();
     foreach ($entities as $entity_type_id => $entities_to_load) {
-      $storage_controller = $this->entityManager->getStorageController($entity_type_id);
+      $storage = $this->entityManager->getStorage($entity_type_id);
       // Remove the keys since there are potential ID clashes from different
       // configuration entity types.
-      $entities_to_return = array_merge($entities_to_return, array_values($storage_controller->loadMultiple($entities_to_load)));
+      $entities_to_return = array_merge($entities_to_return, array_values($storage->loadMultiple($entities_to_load)));
     }
     return $entities_to_return;
   }

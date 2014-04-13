@@ -7,7 +7,7 @@
 
 namespace Drupal\migrate\Plugin\migrate\destination;
 
-use Drupal\Core\Entity\EntityStorageControllerInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\KeyValueStore\StateInterface;
 use Drupal\field\FieldInfo;
 use Drupal\migrate\Entity\MigrationInterface;
@@ -36,12 +36,12 @@ class EntityComment extends EntityContentBase {
    *   A configuration array containing information about the plugin instance.
    * @param string $plugin_id
    *   The plugin_id for the plugin instance.
-   * @param array $plugin_definition
+   * @param mixed $plugin_definition
    *   The plugin implementation definition.
    * @param MigrationInterface $migration
    *   The migration.
-   * @param EntityStorageControllerInterface $storage_controller
-   *   The storage controller for this entity type.
+   * @param EntityStorageInterface $storage
+   *   The storage for this entity type.
    * @param array $bundles
    *   The list of bundles this entity type has.
    * @param \Drupal\migrate\Plugin\MigratePluginManager $plugin_manager
@@ -51,22 +51,22 @@ class EntityComment extends EntityContentBase {
    * @param \Drupal\Core\KeyValueStore\StateInterface $state
    *   The state storage object.
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition, MigrationInterface $migration, EntityStorageControllerInterface $storage_controller, array $bundles, MigratePluginManager $plugin_manager, FieldInfo $field_info, StateInterface $state) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $migration, $storage_controller, $bundles, $plugin_manager, $field_info);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration, EntityStorageInterface $storage, array $bundles, MigratePluginManager $plugin_manager, FieldInfo $field_info, StateInterface $state) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $migration, $storage, $bundles, $plugin_manager, $field_info);
     $this->state = $state;
   }
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, array $plugin_definition, MigrationInterface $migration = NULL) {
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration = NULL) {
     $entity_type = static::getEntityTypeId($plugin_id);
     return new static(
       $configuration,
       $plugin_id,
       $plugin_definition,
       $migration,
-      $container->get('entity.manager')->getStorageController($entity_type),
+      $container->get('entity.manager')->getStorage($entity_type),
       array_keys($container->get('entity.manager')->getBundleInfo($entity_type)),
       $container->get('plugin.manager.migrate.entity_field'),
       $container->get('field.info'),

@@ -10,7 +10,7 @@ namespace Drupal\Core\Config;
 use Drupal\Core\Extension\ExtensionDiscovery;
 
 /**
- * Storage controller used by the Drupal installer.
+ * Storage used by the Drupal installer.
  *
  * This storage performs a full filesystem scan to discover all available
  * extensions and reads from all default config directories that exist.
@@ -30,9 +30,21 @@ class InstallStorage extends FileStorage {
   protected $folders;
 
   /**
-   * Overrides Drupal\Core\Config\FileStorage::__construct().
+   * The directory to scan in each extension to scan for files.
+   *
+   * @var string
    */
-  public function __construct() {
+  protected $directory;
+
+  /**
+   * Constructs an InstallStorage object.
+   *
+   * @param string $directory
+   *   The directory to scan in each extension to scan for files. Defaults to
+   *   'config'.
+   */
+  public function __construct($directory = 'config') {
+    $this->directory = $directory;
   }
 
   /**
@@ -65,12 +77,19 @@ class InstallStorage extends FileStorage {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function exists($name) {
+    return array_key_exists($name, $this->getAllFolders());
+  }
+
+  /**
    * Overrides Drupal\Core\Config\FileStorage::write().
    *
    * @throws \Drupal\Core\Config\StorageException
    */
   public function write($name, array $data) {
-    throw new StorageException('Write operation is not allowed during install.');
+    throw new StorageException('Write operation is not allowed.');
   }
 
   /**
@@ -79,7 +98,7 @@ class InstallStorage extends FileStorage {
    * @throws \Drupal\Core\Config\StorageException
    */
   public function delete($name) {
-    throw new StorageException('Delete operation is not allowed during install.');
+    throw new StorageException('Delete operation is not allowed.');
   }
 
   /**
@@ -88,7 +107,7 @@ class InstallStorage extends FileStorage {
    * @throws \Drupal\Core\Config\StorageException
    */
   public function rename($name, $new_name) {
-    throw new StorageException('Rename operation is not allowed during install.');
+    throw new StorageException('Rename operation is not allowed.');
   }
 
   /**
@@ -119,6 +138,7 @@ class InstallStorage extends FileStorage {
   protected function getAllFolders() {
     if (!isset($this->folders)) {
       $this->folders = array();
+      $this->folders += $this->getComponentNames('core', array('core'));
       // @todo Refactor getComponentNames() to use the extension list directly.
       if ($profile = drupal_get_profile()) {
         $this->folders += $this->getComponentNames('profile', array($profile));
@@ -168,7 +188,7 @@ class InstallStorage extends FileStorage {
    *   The configuration folder name for this component.
    */
   protected function getComponentFolder($type, $name) {
-    return drupal_get_path($type, $name) . '/config';
+    return drupal_get_path($type, $name) . '/' . $this->directory;
   }
 
   /**
@@ -177,7 +197,14 @@ class InstallStorage extends FileStorage {
    * @throws \Drupal\Core\Config\StorageException
    */
   public function deleteAll($prefix = '') {
-    throw new StorageException('Delete operation is not allowed during install.');
+    throw new StorageException('Delete operation is not allowed.');
+  }
+
+  /**
+   * Resets the static cache.
+   */
+  public function reset() {
+    $this->folders = NULL;
   }
 
 }

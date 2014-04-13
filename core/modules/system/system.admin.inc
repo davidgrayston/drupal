@@ -5,8 +5,10 @@
  * Admin page callbacks for the system module.
  */
 
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Extension\Extension;
+use Drupal\Core\Render\Element;
 use Drupal\Core\Template\Attribute;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -93,8 +95,6 @@ function _system_is_incompatible(&$incompatible, $files, Extension $file) {
  *     of the array represents an administrative menu item, and must at least
  *     contain the keys 'title', 'link_path', and 'localized_options', which are
  *     passed to l(). A 'description' key may also be provided.
- *
- * @ingroup themeable
  */
 function template_preprocess_admin_block_content(&$variables) {
   if (!empty($variables['content'])) {
@@ -106,7 +106,7 @@ function template_preprocess_admin_block_content(&$variables) {
     foreach ($variables['content'] as $key => $item) {
       $variables['content'][$key]['link'] = l($item['title'], $item['link_path'], $item['localized_options']);
       if (!$compact && isset($item['description'])) {
-        $variables['content'][$key]['description'] = filter_xss_admin($item['description']);
+        $variables['content'][$key]['description'] = Xss::filterAdmin($item['description']);
       }
       else {
         $variables['content'][$key]['description'] = FALSE;
@@ -126,8 +126,6 @@ function template_preprocess_admin_block_content(&$variables) {
  *     'title', a 'description', a formatted 'content' and a 'position' which
  *     will control which container it will be in. This is usually 'left' or
  *     'right'.
- *
- * @ingroup themeable
  */
 function template_preprocess_admin_page(&$variables) {
   $variables['system_compact_link'] = array(
@@ -228,8 +226,6 @@ function theme_system_admin_index($variables) {
  *       - REQUIREMENT_OK: The requirement is satisfied.
  *       - REQUIREMENT_WARNING: The requirement failed with a warning.
  *       - REQUIREMENT_ERROR: The requirement failed with an error.
- *
- * @ingroup themeable
  */
 function template_preprocess_status_report(&$variables) {
   $severities = array(
@@ -285,7 +281,7 @@ function theme_system_modules_details($variables) {
   // Individual table headers.
   $rows = array();
   // Iterate through all the modules, which are children of this element.
-  foreach (element_children($form) as $key) {
+  foreach (Element::children($form) as $key) {
     // Stick the key into $module for easier access.
     $module = $form[$key];
     // Create the row for the table.
@@ -338,7 +334,7 @@ function theme_system_modules_details($variables) {
     $col4 = drupal_render($details);
     $row[] = array('class' => array('description', 'expand'), 'data' => $col4);
 
-    $rows[] = $row;
+    $rows[] = $module['#attributes'] + array('data' => $row);
   }
 
   $table = array(
@@ -347,19 +343,6 @@ function theme_system_modules_details($variables) {
     '#rows' => $rows,
   );
   return drupal_render($table);
-}
-
-/**
- * Returns HTML for a message about incompatible modules.
- *
- * @param $variables
- *   An associative array containing:
- *   - message: The form array representing the currently disabled modules.
- *
- * @ingroup themeable
- */
-function theme_system_modules_incompatible($variables) {
-  return '<div class="incompatible">' . $variables['message'] . '</div>';
 }
 
 /**
@@ -387,7 +370,7 @@ function theme_system_modules_uninstall($variables) {
 
   // Display table.
   $rows = array();
-  foreach (element_children($form['modules']) as $module) {
+  foreach (Element::children($form['modules']) as $module) {
     if (!empty($form['modules'][$module]['#required_by'])) {
       $disabled_message = format_plural(count($form['modules'][$module]['#required_by']),
         'To uninstall @module, the following module must be uninstalled first: @required_modules',
@@ -400,7 +383,7 @@ function theme_system_modules_uninstall($variables) {
     }
     $rows[] = array(
       array('data' => drupal_render($form['uninstall'][$module]), 'align' => 'center'),
-      '<strong><label for="' . $form['uninstall'][$module]['#id'] . '">' . drupal_render($form['modules'][$module]['name']) . '</label></strong>',
+      '<label for="' . $form['uninstall'][$module]['#id'] . '" class="module-name table-filter-text-source">' . drupal_render($form['modules'][$module]['name']) . '</label>',
       array('data' => drupal_render($form['modules'][$module]['description']) . $disabled_message, 'class' => array('description')),
     );
   }
@@ -411,7 +394,8 @@ function theme_system_modules_uninstall($variables) {
     '#rows' => $rows,
     '#empty' => t('No modules are available to uninstall.'),
   );
-  $output  = drupal_render($table);
+  $output = drupal_render($form['filters']);
+  $output .= drupal_render($table);
   $output .= drupal_render_children($form);
 
   return $output;
@@ -426,8 +410,6 @@ function theme_system_modules_uninstall($variables) {
  *   An associative array containing:
  *   - theme_groups: An associative array containing groups of themes.
  *   - theme_group_titles: An associative array containing titles of themes.
- *
- * @ingroup themeable
  */
 function template_preprocess_system_themes_page(&$variables) {
   $groups = array();
@@ -460,7 +442,13 @@ function template_preprocess_system_themes_page(&$variables) {
         );
       }
       else {
-        $current_theme['screenshot'] = array();
+        $current_theme['screenshot'] = array(
+          '#theme' => 'image',
+          '#uri' => drupal_get_path('module', 'system') . '/images/no_screenshot.png',
+          '#alt' => t('No screenshot'),
+          '#title' => t('No screenshot'),
+          '#attributes' => new Attribute(array('class' => array('no-screenshot'))),
+        );
       }
 
       // Localize the theme description.

@@ -16,7 +16,7 @@ interface StorageComparerInterface {
    * Gets the configuration source storage.
    *
    * @return \Drupal\Core\Config\StorageInterface
-   *   Storage controller object used to read configuration.
+   *   Storage object used to read configuration.
    */
   public function getSourceStorage();
 
@@ -24,7 +24,7 @@ interface StorageComparerInterface {
    * Gets the configuration target storage.
    *
    * @return \Drupal\Core\Config\StorageInterface
-   *   Storage controller object used to write configuration.
+   *   Storage object used to write configuration.
    */
   public function getTargetStorage();
 
@@ -47,51 +47,6 @@ interface StorageComparerInterface {
    *   An array of config changes that are yet to be imported.
    */
   public function getChangelist($op = NULL);
-
-  /**
-   * Adds changes to the changelist.
-   *
-   * @param string $op
-   *   The change operation performed. Either delete, create or update.
-   * @param array $changes
-   *   Array of changes to add the changelist.
-   *
-   * @return \Drupal\Core\Config\StorageComparerInterface
-   *   An object which implements the StorageComparerInterface.
-   */
-  public function addChangeList($op, array $changes);
-
-  /**
-   * Add differences between source and target configuration storage to changelist.
-   *
-   * @return \Drupal\Core\Config\StorageComparerInterface
-   *   An object which implements the StorageComparerInterface.
-   */
-  public function createChangelist();
-
-  /**
-   * Creates the delete changelist.
-   *
-   * @return \Drupal\Core\Config\StorageComparerInterface
-   *   An object which implements the StorageComparerInterface.
-   */
-  public function addChangelistDelete();
-
-  /**
-   * Creates the create changelist.
-   *
-   * @return \Drupal\Core\Config\StorageComparerInterface
-   *   An object which implements the StorageComparerInterface.
-   */
-  public function addChangelistCreate();
-
-  /**
-   * Creates the update changelist.
-   *
-   * @return \Drupal\Core\Config\StorageComparerInterface
-   *   An object which implements the StorageComparerInterface.
-   */
-  public function addChangelistUpdate();
 
   /**
    * Recalculates the differences.

@@ -7,7 +7,7 @@
 
 namespace Drupal\block\Tests;
 
-use Drupal\Core\Config\Entity\ConfigStorageController;
+use Drupal\Core\Config\Entity\ConfigEntityStorage;
 use Drupal\simpletest\DrupalUnitTestBase;
 use Drupal\block_test\Plugin\Block\TestHtmlBlock;
 use Drupal\Component\Plugin\Exception\PluginException;
@@ -27,9 +27,9 @@ class BlockStorageUnitTest extends DrupalUnitTestBase {
   public static $modules = array('block', 'block_test', 'system');
 
   /**
-   * The block storage controller.
+   * The block storage.
    *
-   * @var \Drupal\Core\Config\Entity\ConfigStorageControllerInterface.
+   * @var \Drupal\Core\Config\Entity\ConfigEntityStorageInterface.
    */
   protected $controller;
 
@@ -44,14 +44,14 @@ class BlockStorageUnitTest extends DrupalUnitTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->controller = $this->container->get('entity.manager')->getStorageController('block');
+    $this->controller = $this->container->get('entity.manager')->getStorage('block');
   }
 
   /**
    * Tests CRUD operations.
    */
   public function testBlockCRUD() {
-    $this->assertTrue($this->controller instanceof ConfigStorageController, 'The block storage controller is loaded.');
+    $this->assertTrue($this->controller instanceof ConfigEntityStorage, 'The block storage is loaded.');
 
     // Run each test method in the same installation.
     $this->createTests();
@@ -93,14 +93,14 @@ class BlockStorageUnitTest extends DrupalUnitTestBase {
       'id' => 'test_block',
       'weight' => NULL,
       'status' => TRUE,
-      'langcode' => language_default()->id,
+      'langcode' => \Drupal::languageManager()->getDefaultLanguage()->id,
       'dependencies' => array('module' => array('block_test'), 'theme' => array('stark')),
       'theme' => 'stark',
       'region' => '-1',
       'plugin' => 'test_html',
       'settings' => array(
         'label' => '',
-        'module' => 'block_test',
+        'provider' => 'block_test',
         'label_display' => BlockInterface::BLOCK_LABEL_VISIBLE,
         'cache' => array(
           'max_age' => 0,

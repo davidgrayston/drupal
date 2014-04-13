@@ -9,23 +9,25 @@
  * @mainpage
  * Welcome to the Drupal API Documentation!
  *
- * This documentation is generated from specially-formatted comments embedded in
- * the Drupal source code. Here are some topics to get you started.
+ * This site is an API reference for Drupal, generated from comments embedded
+ * in the source code. More in-depth documentation can be found at
+ * https://drupal.org/developing/api.
+ *
+ * Here are some topics to help you get started developing with Drupal.
  *
  * @section essentials Essential background concepts
  *
  * - @link architecture Drupal's architecture @endlink
- * - @link extending Extending Drupal @endlink
  * - @link oo_conventions Object-oriented conventions used in Drupal @endlink
- * - @link best_practices Best practices @endlink
+ * - @link extending Extending Drupal @endlink
+ * - @link best_practices Security and best practices @endlink
  *
- * @section interfacing Interfacing with the outside world
+ * @section interface User interface
  *
  * - @link menu Routing, page controllers, and menu entries @endlink
  * - @link form_api Forms @endlink
  * - @link block_api Blocks @endlink
  * - @link ajax Ajax @endlink
- * - @link third_party Integrating third-party applications @endlink
  *
  * @section store_retrieve Storing and retrieving data
  *
@@ -36,19 +38,21 @@
  * - @link views_overview Views @endlink
  * - @link database Database abstraction layer @endlink
  *
- * @section utility Other essential APIs
+ * @section other_essentials Other essential APIs
  *
  * - @link i18n Internationalization @endlink
  * - @link cache Caching @endlink
+ * - @link utility Utility classes and functions @endlink
  * - @link user_api User accounts, permissions, and roles @endlink
  * - @link theme_render Theme system and render API @endlink
  * - @link migration Migration @endlink
  *
- * @section advanced Advanced topics
+ * @section additional Additional topics
  *
  * - @link container Services and the Dependency Injection Container @endlink
  * - @link typed_data Typed Data @endlink
  * - @link testing Automated tests @endlink
+ * - @link third_party Integrating third-party applications @endlink
  *
  * @section more_info Further information
  *
@@ -197,7 +201,6 @@
  *
  * Example:
  * @code
- * $cache = \Drupal::cache();
  * $cid = 'mymodule_example:' . \Drupal::languageManager()->getCurrentLanguage()->id();
  *
  * $data = NULL;
@@ -210,6 +213,12 @@
  * }
  * @endcode
  *
+ * Note the use of $data and $cache->data in the above example. Calls to
+ * \Drupal::cache()->get() return a record that contains the information stored
+ * by \Drupal::cache()->set() in the data property as well as additional meta
+ * information about the cached data. In order to make use of the cached data
+ * you can access it via $cache->data.
+ *
  * @section bins Cache bins
  *
  * Cache storage is separated into "bins", each containing various cache items.
@@ -217,10 +226,17 @@
  *
  * When you request a cache object, you can specify the bin name in your call to
  * \Drupal::cache(). Alternatively, you can request a bin by getting service
- * "cache.nameofbin" from the container. The default bin is called "cache", with
- * service name "cache.cache".
+ * "cache.nameofbin" from the container. The default bin is called "default", with
+ * service name "cache.default", it is used to store common and frequently used
+ * caches.
  *
- * @todo: Document common cache bins in https://drupal.org/node/1194136
+ * Other common cache bins are the following:
+ *   - bootstrap: Small caches needed for the bootstrap on every request.
+ *   - render: Contains cached HTML strings like cached pages and blocks, can
+ *     grow to large size.
+ *   - data: Contains data that can vary by path or similar context.
+ *   - discovery: Contains cached discovery data for things such as plugins,
+ *     views_data, or YAML discovered data such as library info.
  *
  * A module can define a cache bin by defining a service in its
  * modulename.services.yml file as follows (substituting the desired name for
@@ -263,13 +279,29 @@
  * @section tags Cache Tags
  *
  * The fourth argument of the set() method can be used to specify cache tags,
- * which are used to identify what type of data is included in each cache. Each
- * cache can have multiple tags, and each tag has a string key and a value. The
- * value can be:
- * - TRUE, to indicate that this type of data is present in the cache.
+ * which are used to identify what type of data is included in each cache item.
+ * Each cache item can have multiple cache tags, and each cache tag has a string
+ * key and a value. The value can be:
+ * - TRUE, to indicate that this type of data is present in the cache item.
  * - An array of values. For example, the "node" tag indicates that particular
- *   nodes' data is present in the cache, so its value is an array of node IDs.
- * Data that has been tagged can be deleted or invalidated as a group.
+ *   node's data is present in the cache item, so its value is an array of node
+ *   IDs.
+ * Data that has been tagged can be deleted or invalidated as a group: no matter
+ * the Cache ID (cid) of the cache item, no matter in which cache bin a cache
+ * item lives; as long as it is tagged with a certain cache tag, it will be
+ * deleted or invalidated.
+ *
+ * Because of that, cache tags are a solution to the cache invalidation problem:
+ * - For caching to be effective, each cache item must only be invalidated when
+ *   absolutely necessary. (i.e. maximizing the cache hit ratio.)
+ * - For caching to be correct, each cache item that depends on a certain thing
+ *   must be invalidated whenever that certain thing is modified.
+ *
+ * A typical scenario: a user has modified a node that appears in two views,
+ * three blocks and on twelve pages. Without cache tags, we couldn't possibly
+ * know which cache items to invalidate, so we'd have to invalidate everything:
+ * we had to sacrifice effectiveness to achieve correctness. With cache tags, we
+ * can have both.
  *
  * Example:
  * @code
@@ -281,33 +313,44 @@
  * );
  * \Drupal::cache()->set($cid, $data, CacheBackendInterface::CACHE_PERMANENT, $tags);
  *
- * // Delete or invalidate all caches with certain tags.
+ * // Delete or invalidate all cache items with certain tags.
  * \Drupal\Core\Cache\Cache::deleteTags(array('node' => array(1));
  * \Drupal\Core\Cache\Cache::invalidateTags(array('user' => array(1)));
  * @endcode
  *
- * @todo Update cache tag deletion in https://drupal.org/node/918538
+ * Drupal is a content management system, so naturally you want changes to your
+ * content to be reflected everywhere, immediately. That's why we made sure that
+ * every entity type in Drupal 8 automatically has support for cache tags: when
+ * you save an entity, you can be sure that the cache items that have the
+ * corresponding cache tags will be invalidated.
+ * This also is the case when you define your own entity types: you'll get the
+ * exact same cache tag invalidation as any of the built-in entity types, with
+ * the ability to override any of the default behavior if needed.
+ * See \Drupal\Core\Entity\EntityInterface::getCacheTag(),
+ * \Drupal\Core\Entity\EntityInterface::getListCacheTags(),
+ * \Drupal\Core\Entity\Entity::invalidateTagsOnSave() and
+ * \Drupal\Core\Entity\Entity::invalidateTagsOnDelete().
  *
- * @todo Extend entity cache tags based on https://drupal.org/node/2217749
+ * @todo Update cache tag deletion in https://drupal.org/node/918538
  *
  * @section configuration Configuration
  *
- * Each cache bin can be configured separately; for instance, each bin can use a
- * different cache backend, such as APC or Memcache. The default backend stores
- * the cached data in the Drupal database.
+ * By default cached data is stored in the database. This can be configured
+ * though so that all cached data, or that of an individual cache bin, uses a
+ * different cache backend, such as APC or Memcache, for storage.
  *
- * In a settings.php file, you can override the class used for a particular
- * cache bin. For example, if your implementation of
- * \Drupal\Core\Cache\CacheBackendInterface was called MyCustomCache, the
- * following line would make Drupal use it for the 'cache_page' bin:
+ * In a settings.php file, you can override the service used for a particular
+ * cache bin. For example, if your service implementation of
+ * \Drupal\Core\Cache\CacheBackendInterface was called cache.custom, the
+ * following line would make Drupal use it for the 'cache_render' bin:
  * @code
- *  $settings['cache_classes']['cache_page'] = 'Drupal\full\namespace\to\MyCustomCache';
+ *  $settings['cache']['bins']['render'] = 'cache.custom';
  * @endcode
  *
  * Additionally, you can register your cache implementation to be used by
  * default for all cache bins with:
  * @code
- *  $settings['cache_classes']['cache'] = 'Drupal\full\namespace\to\MyCustomCache';
+ *  $settings['cache']['default'] = 'cache.custom';
  * @endcode
  *
  * @see https://drupal.org/node/1884796
@@ -461,5 +504,26 @@
  * - Usability: https://drupal.org/ui-standards
  * - Internationalization: @link i18n Internationalization topic @endlink
  * - Automated testing: @link testing Automated tests topic @endlink
+ * @}
+ */
+
+/**
+ * @defgroup utility Utility classes and functions
+ * @{
+ * Overview of utility classes and functions for developers.
+ *
+ * Drupal provides developers with a variety of utility functions that make it
+ * easier and more efficient to perform tasks that are either really common,
+ * tedious, or difficult. Utility functions help to reduce code duplication and
+ * should be used in place of one-off code whenever possible.
+ *
+ * @see common.inc
+ * @see file
+ * @see format
+ * @see mail.inc
+ * @see php_wrappers
+ * @see sanitization
+ * @see transliteration
+ * @see validation
  * @}
  */

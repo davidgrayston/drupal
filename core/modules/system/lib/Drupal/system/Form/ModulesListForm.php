@@ -15,6 +15,7 @@ use Drupal\Core\Extension\Extension;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\KeyValueStore\KeyValueStoreExpirableInterface;
+use Drupal\Core\Render\Element;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Access\AccessManager;
 
@@ -142,7 +143,7 @@ class ModulesListForm extends FormBase {
     }
 
     // Add a wrapper around every package.
-    foreach (element_children($form['modules']) as $package) {
+    foreach (Element::children($form['modules']) as $package) {
       $form['modules'][$package] += array(
         '#type' => 'details',
         '#title' => $this->t($package),
@@ -160,7 +161,7 @@ class ModulesListForm extends FormBase {
     }
 
     // Lastly, sort all packages by title.
-    uasort($form['modules'], 'element_sort_by_title');
+    uasort($form['modules'], array('\Drupal\Component\Utility\SortArray', 'sortByTitleProperty'));
 
     $form['#attached']['library'][] = 'system/drupal.system.modules';
     $form['actions'] = array('#type' => 'actions');
@@ -229,7 +230,7 @@ class ModulesListForm extends FormBase {
         $result = $this->queryFactory->get('menu_link')
           ->condition('route_name', $module->info['configure'])
           ->execute();
-        $menu_items = $this->entityManager->getStorageController('menu_link')->loadMultiple($result);
+        $menu_items = $this->entityManager->getStorage('menu_link')->loadMultiple($result);
         $item = reset($menu_items);
         $row['links']['configure'] = array(
           '#type' => 'link',
@@ -262,12 +263,15 @@ class ModulesListForm extends FormBase {
 
     // Check the compatibilities.
     $compatible = TRUE;
-    $status = '';
+
+    // Initialize an empty array of reasons why the module is incompatible. Add
+    // each reason as a separate element of the array.
+    $reasons = array();
 
     // Check the core compatibility.
     if ($module->info['core'] != \Drupal::CORE_COMPATIBILITY) {
       $compatible = FALSE;
-      $status .= $this->t('This version is not compatible with Drupal !core_version and should be replaced.', array(
+      $reasons[] = $this->t('This version is not compatible with Drupal !core_version and should be replaced.', array(
         '!core_version' => \Drupal::CORE_COMPATIBILITY,
       ));
     }
@@ -276,7 +280,7 @@ class ModulesListForm extends FormBase {
     if (version_compare(phpversion(), $module->info['php']) < 0) {
       $compatible = FALSE;
       $required = $module->info['php'] . (substr_count($module->info['php'], '.') < 2 ? '.*' : '');
-      $status .= $this->t('This module requires PHP version @php_required and is incompatible with PHP version !php_version.', array(
+      $reasons[] = $this->t('This module requires PHP version @php_required and is incompatible with PHP version !php_version.', array(
         '@php_required' => $required,
         '!php_version' => phpversion(),
       ));
@@ -284,11 +288,10 @@ class ModulesListForm extends FormBase {
 
     // If this module is not compatible, disable the checkbox.
     if (!$compatible) {
+      $status = implode(' ', $reasons);
       $row['enable']['#disabled'] = TRUE;
-      $row['description'] = array(
-        '#theme' => 'system_modules_incompatible',
-        '#message' => $status,
-      );
+      $row['description']['#markup'] = $status;
+      $row['#attributes']['class'][] = 'incompatible';
     }
 
     // If this module requires other modules, add them to the array.

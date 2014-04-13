@@ -11,11 +11,13 @@ use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Utility\Json;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Database\ConnectionNotDefinedException;
 use Drupal\Core\Language\Language;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\Core\Session\UserSession;
 use Drupal\Core\StreamWrapper\PublicStream;
 use Drupal\Core\Datetime\DrupalDateTime;
@@ -173,6 +175,11 @@ abstract class WebTestBase extends TestBase {
   protected $kernel;
 
   /**
+   * The config directories used in this test.
+   */
+  protected $configDirectories = array();
+
+  /**
    * Cookies to set on curl requests.
    *
    * @var array
@@ -207,7 +214,7 @@ abstract class WebTestBase extends TestBase {
    */
   function drupalGetNodeByTitle($title, $reset = FALSE) {
     if ($reset) {
-      \Drupal::entityManager()->getStorageController('node')->resetCache();
+      \Drupal::entityManager()->getStorage('node')->resetCache();
     }
     $nodes = entity_load_multiple_by_properties('node', array('title' => $title));
     // Load the first node returned from the database.
@@ -680,7 +687,7 @@ abstract class WebTestBase extends TestBase {
     $pass = $this->assert($this->drupalUserIsLoggedIn($account), format_string('User %name successfully logged in.', array('%name' => $account->getUsername())), 'User login');
     if ($pass) {
       $this->loggedInUser = $account;
-      $this->container->set('current_user', $account);
+      $this->container->get('current_user')->setAccount($account);
       // @todo Temporary workaround for not being able to use synchronized
       //   services in non dumped container.
       $this->container->get('access_subscriber')->setCurrentUser($account);
@@ -697,8 +704,8 @@ abstract class WebTestBase extends TestBase {
     if (!isset($account->session_id)) {
       return FALSE;
     }
-    // @see _drupal_session_read(). The session ID is hashed before being stored
-    // in the database.
+    // The session ID is hashed before being stored in the database.
+    // @see \Drupal\Core\Session\SessionHandler::read()
     return (bool) db_query("SELECT sid FROM {users} u INNER JOIN {sessions} s ON u.uid = s.uid WHERE s.sid = :sid", array(':sid' => Crypt::hashBase64($account->session_id)))->fetchField();
   }
 
@@ -728,7 +735,7 @@ abstract class WebTestBase extends TestBase {
       // @see WebTestBase::drupalUserIsLoggedIn()
       unset($this->loggedInUser->session_id);
       $this->loggedInUser = FALSE;
-      $this->container->set('current_user', drupal_anonymous_user());
+      $this->container->get('current_user')->setAccount(new AnonymousUserSession());
     }
   }
 
@@ -2765,7 +2772,7 @@ abstract class WebTestBase extends TestBase {
    */
   protected function assertTextHelper($text, $message = '', $group, $not_exists) {
     if ($this->plainTextContent === FALSE) {
-      $this->plainTextContent = filter_xss($this->drupalGetContent(), array());
+      $this->plainTextContent = Xss::filter($this->drupalGetContent(), array());
     }
     if (!$message) {
       $message = !$not_exists ? String::format('"@text" found', array('@text' => $text)) : String::format('"@text" not found', array('@text' => $text));
@@ -2850,7 +2857,7 @@ abstract class WebTestBase extends TestBase {
    */
   protected function assertUniqueTextHelper($text, $message = '', $group, $be_unique) {
     if ($this->plainTextContent === FALSE) {
-      $this->plainTextContent = filter_xss($this->drupalGetContent(), array());
+      $this->plainTextContent = Xss::filter($this->drupalGetContent(), array());
     }
     if (!$message) {
       $message = '"' . $text . '"' . ($be_unique ? ' found only once' : ' found more than once');

@@ -7,11 +7,13 @@
 
 namespace Drupal\field\Plugin\views\field;
 
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
-use Drupal\Core\Entity\EntityStorageControllerInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Render\Element;
 use Drupal\field\Field as FieldHelper;
-use Drupal\Core\Entity\FieldableDatabaseStorageController;
+use Drupal\Core\Entity\ContentEntityDatabaseStorage;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FormatterPluginManager;
 use Drupal\Core\Language\Language;
@@ -28,7 +30,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * @ingroup views_field_handlers
  *
- * @PluginID("field")
+ * @ViewsField("field")
  */
 class Field extends FieldPluginBase {
 
@@ -102,7 +104,7 @@ class Field extends FieldPluginBase {
    *   A configuration array containing information about the plugin instance.
    * @param string $plugin_id
    *   The plugin_id for the plugin instance.
-   * @param array $plugin_definition
+   * @param mixed $plugin_definition
    *   The plugin implementation definition.
    * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
    *   The field formatter plugin manager.
@@ -111,7 +113,7 @@ class Field extends FieldPluginBase {
    * @param \Drupal\Core\Language\LanguageManager $language_manager
    *   The language manager.
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition, EntityManagerInterface $entity_manager, FormatterPluginManager $formatter_plugin_manager, LanguageManager $language_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, FormatterPluginManager $formatter_plugin_manager, LanguageManager $language_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityManager = $entity_manager;
@@ -122,7 +124,7 @@ class Field extends FieldPluginBase {
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, array $plugin_definition) {
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static(
       $configuration,
       $plugin_id,
@@ -228,7 +230,7 @@ class Field extends FieldPluginBase {
       $options += is_array($this->options['group_columns']) ? $this->options['group_columns'] : array();
 
       $fields = array();
-      $rkey = $this->definition['is revision'] ? EntityStorageControllerInterface::FIELD_LOAD_REVISION : EntityStorageControllerInterface::FIELD_LOAD_CURRENT;
+      $rkey = $this->definition['is revision'] ? EntityStorageInterface::FIELD_LOAD_REVISION : EntityStorageInterface::FIELD_LOAD_CURRENT;
       // Go through the list and determine the actual column name from field api.
       foreach ($options as $column) {
         $name = $column;
@@ -309,7 +311,7 @@ class Field extends FieldPluginBase {
 
     $this->ensureMyTable();
     $field = field_info_field($this->definition['entity_type'], $this->definition['field_name']);
-    $column = FieldableDatabaseStorageController::_fieldColumnName($field, $this->options['click_sort_column']);
+    $column = ContentEntityDatabaseStorage::_fieldColumnName($field, $this->options['click_sort_column']);
     if (!isset($this->aliases[$column])) {
       // Column is not in query; add a sort on it (without adding the column).
       $this->aliases[$column] = $this->tableAlias . '.' . $column;
@@ -649,7 +651,7 @@ class Field extends FieldPluginBase {
       }
 
       if ($this->options['multi_type'] == 'separator') {
-        return implode(filter_xss_admin($this->options['separator']), $items);
+        return implode(Xss::filterAdmin($this->options['separator']), $items);
       }
       else {
         $item_list = array(
@@ -692,7 +694,7 @@ class Field extends FieldPluginBase {
       return array(array('rendered' => drupal_render($render_array)));
     }
 
-    foreach (element_children($render_array) as $count) {
+    foreach (Element::children($render_array) as $count) {
       $items[$count]['rendered'] = $render_array[$count];
       // FieldItemListInterface::view() adds an #access property to the render
       // array that determines whether or not the current user is allowed to
@@ -833,8 +835,9 @@ class Field extends FieldPluginBase {
   protected function addSelfTokens(&$tokens, $item) {
     $field = $this->field_info;
     foreach ($field->getColumns() as $id => $column) {
-      // Use filter_xss_admin because it's user data and we can't be sure it is safe.
-      // We know nothing about the data, though, so we can't really do much else.
+      // Use \Drupal\Component\Utility\Xss::filterAdmin() because it's user data
+      // and we can't be sure it is safe. We know nothing about the data,
+      // though, so we can't really do much else.
 
       if (isset($item['raw'])) {
         // If $item['raw'] is an array then we can use as is, if it's an object
@@ -843,7 +846,7 @@ class Field extends FieldPluginBase {
                (is_object($item['raw']) ? (array)$item['raw'] : NULL);
       }
       if (isset($raw) && isset($raw[$id]) && is_scalar($raw[$id])) {
-        $tokens['[' . $this->options['id'] . '-' . $id . ']'] = filter_xss_admin($raw[$id]);
+        $tokens['[' . $this->options['id'] . '-' . $id . ']'] = Xss::filterAdmin($raw[$id]);
       }
       else {
         // Make sure that empty values are replaced as well.

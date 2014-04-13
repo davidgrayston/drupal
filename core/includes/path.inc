@@ -103,7 +103,7 @@ function current_path() {
  *   A string representing the source, a number representing the pid, or an
  *   array of query conditions.
  *
- * @see \Drupal\Core\Path\Path::load()
+ * @see \Drupal\Core\Path\PathInterface::load()
  */
 function path_load($conditions) {
   if (is_numeric($conditions)) {
@@ -115,7 +115,7 @@ function path_load($conditions) {
   elseif (!is_array($conditions)) {
     return FALSE;
   }
-  return \Drupal::service('path.crud')->load($conditions);
+  return \Drupal::service('path.alias_storage')->load($conditions);
 }
 
 /**

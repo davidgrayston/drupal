@@ -9,6 +9,7 @@ namespace Drupal\shortcut\Form;
 
 use Drupal\Core\Entity\EntityFormController;
 use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Render\Element;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -74,7 +75,7 @@ class SetCustomize extends EntityFormController {
       );
     }
     // Sort the list so the output is ordered by weight.
-    uasort($form['shortcuts']['links'], 'element_sort');
+    uasort($form['shortcuts']['links'], array('\Drupal\Component\Utility\SortArray', 'sortByWeightProperty'));
     return $form;
   }
 
@@ -86,7 +87,7 @@ class SetCustomize extends EntityFormController {
     return array(
       'submit' => array(
         '#value' => t('Save changes'),
-        '#access' => (bool) element_get_visible_children($form['shortcuts']['links']),
+        '#access' => (bool) Element::getVisibleChildren($form['shortcuts']['links']),
         '#submit' => array(
           array($this, 'submit'),
           array($this, 'save'),

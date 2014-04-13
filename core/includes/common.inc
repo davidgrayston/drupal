@@ -15,12 +15,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Yaml\Parser;
 use Symfony\Component\Yaml\Exception\ParseException;
-use Drupal\Component\PhpStorage\PhpStorageFactory;
+use Drupal\Core\PhpStorage\PhpStorageFactory;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\EventSubscriber\HtmlViewSubscriber;
 use Drupal\Core\Routing\GeneratorNotInitializedException;
 use Drupal\Core\Template\Attribute;
 use Drupal\Core\Render\Element;
+use Drupal\Core\Session\AnonymousUserSession;
 
 /**
  * @file
@@ -191,8 +193,10 @@ function drupal_get_region_content($region = NULL, $delimiter = ' ') {
  * installation state. At all other times, the "install_profile" setting will be
  * available in settings.php.
  *
- * @return $profile
- *   The name of the installation profile.
+ * @return string|null $profile
+ *   The name of the installation profile or NULL if no installation profile is
+ *   currently active. This is the case for example during the first steps of
+ *   the installer or during unit tests.
  */
 function drupal_get_profile() {
   global $install_state;
@@ -203,11 +207,12 @@ function drupal_get_profile() {
       $profile = $install_state['parameters']['profile'];
     }
     else {
-      $profile = '';
+      $profile = NULL;
     }
   }
   else {
-    $profile = settings()->get('install_profile') ?: 'standard';
+    // Fall back to NULL, if there is no 'install_profile' setting.
+    $profile = Settings::get('install_profile');
   }
 
   return $profile;
@@ -496,7 +501,7 @@ function _external_url_is_local($url) {
  *   TRUE if a proxy should be used for this host.
  */
 function _drupal_http_use_proxy($host) {
-  $proxy_exceptions = settings()->get('proxy_exceptions', array('localhost', '127.0.0.1'));
+  $proxy_exceptions = Settings::get('proxy_exceptions', array('localhost', '127.0.0.1'));
   return !in_array(strtolower($host), $proxy_exceptions, TRUE);
 }
 
@@ -1197,11 +1202,11 @@ function l($text, $path, array $options = array()) {
  * into script execution a call such as set_time_limit(20) is made, the
  * script will run for a total of 45 seconds before timing out.
  *
- * It also means that it is possible to decrease the total time limit if
- * the sum of the new time limit and the current time spent running the
- * script is inferior to the original time limit. It is inherent to the way
- * set_time_limit() works, it should rather be called with an appropriate
- * value every time you need to allocate a certain amount of time
+ * If the current time limit is not unlimited it is possible to decrease the
+ * total time limit if the sum of the new time limit and the current time spent
+ * running the script is inferior to the original time limit. It is inherent to
+ * the way set_time_limit() works, it should rather be called with an
+ * appropriate value every time you need to allocate a certain amount of time
  * to execute a task than only once at the beginning of the script.
  *
  * Before calling set_time_limit(), we check if this function is available
@@ -1218,7 +1223,11 @@ function l($text, $path, array $options = array()) {
  */
 function drupal_set_time_limit($time_limit) {
   if (function_exists('set_time_limit')) {
-    @set_time_limit($time_limit);
+    $current = ini_get('max_execution_time');
+    // Do not set time limit if it is currently unlimited.
+    if ($current != 0) {
+      @set_time_limit($time_limit);
+    }
   }
 }
 
@@ -1226,9 +1235,11 @@ function drupal_set_time_limit($time_limit) {
  * Returns the path to a system item (module, theme, etc.).
  *
  * @param $type
- *   The type of the item (i.e. theme, theme_engine, module, profile).
+ *   The type of the item; one of 'core', 'profile', 'module', 'theme', or
+ *   'theme_engine'.
  * @param $name
- *   The name of the item for which the path is requested.
+ *   The name of the item for which the path is requested. Ignored for
+ *   $type 'core'.
  *
  * @return
  *   The path to the requested item or an empty string if the item is not found.
@@ -2071,7 +2082,12 @@ function _drupal_add_js($data = NULL, $options = NULL) {
             ksort($current_query);
             $path['currentQuery'] = (object) $current_query;
           }
-          $javascript['settings']['data'][] = array('path' => $path);
+          $javascript['settings']['data'][] = array(
+            'path' => $path,
+            'locale' => array(
+              'pluralDelimiter' => LOCALE_PLURAL_DELIMITER,
+            ),
+          );
         }
         // All JavaScript settings are placed in the header of the page with
         // the library weight so that inline scripts appear afterwards.
@@ -2595,16 +2611,18 @@ function drupal_process_states(&$elements) {
  *   TRUE if the library was successfully added; FALSE if the library or one of
  *   its dependencies could not be added.
  *
- * @see drupal_get_library()
+ * @see \Drupal\Core\Asset\LibraryDiscovery
  * @see hook_library_info_alter()
  */
 function _drupal_add_library($library_name, $every_page = NULL) {
   $added = &drupal_static(__FUNCTION__, array());
+  /** @var \Drupal\Core\Asset\LibraryDiscoveryInterface $library_discovery */
+  $library_discovery = \Drupal::service('library.discovery');
 
   list($extension, $name) = explode('/', $library_name, 2);
   // Only process the library if it exists and it was not added already.
   if (!isset($added[$extension][$name])) {
-    if ($library = drupal_get_library($library_name)) {
+    if ($library = $library_discovery->getLibraryByName($extension, $name)) {
       // Allow modules and themes to dynamically attach request and context
       // specific data for this library; e.g., localization.
       \Drupal::moduleHandler()->alter('library', $library, $library_name);
@@ -2633,188 +2651,6 @@ function _drupal_add_library($library_name, $every_page = NULL) {
   }
 
   return $added[$extension][$name];
-}
-
-/**
- * Retrieves information for a JavaScript/CSS library.
- *
- * Library information is statically cached. Libraries are keyed by module for
- * several reasons:
- * - Libraries are not unique. Multiple modules might ship with the same library
- *   in a different version or variant. This registry cannot (and does not
- *   attempt to) prevent library conflicts.
- * - Modules implementing and thereby depending on a library that is registered
- *   by another module can only rely on that module's library.
- * - Two (or more) modules can still register the same library and use it
- *   without conflicts in case the libraries are loaded on certain pages only.
- *
- * @param $library_name
- *   The name of a registered library to retrieve. By default, all
- *   libraries registered by the extension are returned.
- *
- * @return
- *   The definition of the requested library, if $name was passed and it exists,
- *   or FALSE if it does not exist. If no $name was passed, an associative array
- *   of libraries registered by the module is returned (which may be empty).
- *
- * @see _drupal_add_library()
- * @see hook_library_info_alter()
- *
- * @todo The purpose of drupal_get_*() is completely different to other page
- *   requisite API functions; find and use a different name.
- */
-function drupal_get_library($library_name) {
-  $libraries = &drupal_static(__FUNCTION__, array());
-
-  $library_info = explode('/', $library_name, 2);
-  $extension = $library_info[0];
-  $name = isset($library_info[1]) ? $library_info[1] : NULL;
-  if (!isset($libraries[$extension]) && ($cache = \Drupal::cache()->get('library:info:' . $extension))) {
-    $libraries[$extension] = $cache->data;
-  }
-
-  if (!isset($libraries[$extension])) {
-    $libraries[$extension] = array();
-    if ($extension === 'core') {
-      $path = 'core';
-      $extension_type = 'core';
-    }
-    else {
-      // @todo Add a $type argument OR automatically figure out the type based
-      //   on current extension data, possibly using a module->theme fallback.
-      $path = drupal_get_path('module', $extension);
-      $extension_type = 'module';
-      if (!$path) {
-        $path = drupal_get_path('theme', $extension);
-        $extension_type = 'theme';
-      }
-    }
-    $library_file = $path . '/' . $extension . '.libraries.yml';
-
-    if ($library_file && file_exists(DRUPAL_ROOT . '/' . $library_file)) {
-      $libraries[$extension] = array();
-      $parser = new Parser();
-      try {
-        $libraries[$extension] = $parser->parse(file_get_contents(DRUPAL_ROOT . '/' . $library_file));
-      }
-      catch (ParseException $e) {
-        // Rethrow a more helpful exception, since ParseException lacks context.
-        throw new \RuntimeException(sprintf('Invalid library definition in %s: %s', $library_file, $e->getMessage()), 0, $e);
-      }
-      // Allow modules to alter the module's registered libraries.
-      \Drupal::moduleHandler()->alter('library_info', $libraries[$extension], $extension);
-    }
-
-    foreach ($libraries[$extension] as $id => &$library) {
-      if (!isset($library['js']) && !isset($library['css']) && !isset($library['settings'])) {
-        throw new \RuntimeException(sprintf("Incomplete library definition for '%s' in %s", $id, $library_file));
-      }
-      $library += array('dependencies' => array(), 'js' => array(), 'css' => array());
-
-      if (isset($library['version'])) {
-        // @todo Retrieve version of a non-core extension.
-        if ($library['version'] === 'VERSION') {
-          $library['version'] = \Drupal::VERSION;
-        }
-        // Remove 'v' prefix from external library versions.
-        elseif ($library['version'][0] === 'v') {
-          $library['version'] = substr($library['version'], 1);
-        }
-      }
-
-      foreach (array('js', 'css') as $type) {
-        // Prepare (flatten) the SMACSS-categorized definitions.
-        // @todo After Asset(ic) changes, retain the definitions as-is and
-        //   properly resolve dependencies for all (css) libraries per category,
-        //   and only once prior to rendering out an HTML page.
-        if ($type == 'css' && !empty($library[$type])) {
-          foreach ($library[$type] as $category => $files) {
-            foreach ($files as $source => $options) {
-              if (!isset($options['weight'])) {
-                $options['weight'] = 0;
-              }
-              // Apply the corresponding weight defined by CSS_* constants.
-              $options['weight'] += constant('CSS_' . strtoupper($category));
-              $library[$type][$source] = $options;
-            }
-            unset($library[$type][$category]);
-          }
-        }
-        foreach ($library[$type] as $source => $options) {
-          unset($library[$type][$source]);
-          // Allow to omit the options hashmap in YAML declarations.
-          if (!is_array($options)) {
-            $options = array();
-          }
-          if ($type == 'js' && isset($options['weight']) && $options['weight'] > 0) {
-            throw new \UnexpectedValueException("The $extension/$id library defines a positive weight for '$source'. Only negative weights are allowed (but should be avoided). Instead of a positive weight, specify accurate dependencies for this library.");
-          }
-          // Unconditionally apply default groups for the defined asset files.
-          // The library system is a dependency management system. Each library
-          // properly specifies its dependencies instead of relying on a custom
-          // processing order.
-          if ($type == 'js') {
-            $options['group'] = JS_LIBRARY;
-          }
-          elseif ($type == 'css') {
-            $options['group'] = $extension_type == 'theme' ? CSS_AGGREGATE_THEME : CSS_AGGREGATE_DEFAULT;
-          }
-          // By default, all library assets are files.
-          if (!isset($options['type'])) {
-            $options['type'] = 'file';
-          }
-          if ($options['type'] == 'external') {
-            $options['data'] = $source;
-          }
-          // Determine the file asset URI.
-          else {
-            if ($source[0] === '/') {
-              // An absolute path maps to DRUPAL_ROOT / base_path().
-              if ($source[1] !== '/') {
-                $options['data'] = substr($source, 1);
-              }
-              // A protocol-free URI (e.g., //cdn.com/example.js) is external.
-              else {
-                $options['type'] = 'external';
-                $options['data'] = $source;
-              }
-            }
-            // A stream wrapper URI (e.g., public://generated_js/example.js).
-            elseif (file_valid_uri($source)) {
-              $options['data'] = $source;
-            }
-            // By default, file paths are relative to the registering extension.
-            else {
-              $options['data'] = $path . '/' . $source;
-            }
-          }
-          $options['version'] = $library['version'];
-
-          $library[$type][] = $options;
-        }
-      }
-      // @todo Introduce drupal_add_settings().
-      if (isset($library['settings'])) {
-        $library['js'][] = array(
-          'type' => 'setting',
-          'data' => $library['settings'],
-        );
-        unset($library['settings']);
-      }
-    }
-    \Drupal::cache()->set('library:info:' . $extension, $libraries[$extension], Cache::PERMANENT, array(
-      'extension' => array(TRUE, $extension),
-      'library_info' => array(TRUE),
-    ));
-  }
-
-  if (isset($name)) {
-    if (!isset($libraries[$extension][$name])) {
-      $libraries[$extension][$name] = FALSE;
-    }
-    return $libraries[$extension][$name];
-  }
-  return $libraries[$extension];
 }
 
 /**
@@ -3041,7 +2877,7 @@ function drupal_get_private_key() {
  *
  * @see drupal_get_hash_salt()
  * @see \Drupal\Core\Access\CsrfTokenGenerator
- * @see drupal_session_start()
+ * @see \Drupal\Core\Session\SessionManager::start()
  *
  * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
  *   Use \Drupal::csrfToken()->get().
@@ -3077,11 +2913,11 @@ function drupal_valid_token($token, $value = '', $skip_anonymous = FALSE) {
  * Loads code for subsystems and modules, and registers stream wrappers.
  */
 function _drupal_bootstrap_code() {
-  require_once __DIR__ . '/../../' . settings()->get('path_inc', 'core/includes/path.inc');
+  require_once __DIR__ . '/../../' . Settings::get('path_inc', 'core/includes/path.inc');
   require_once __DIR__ . '/module.inc';
   require_once __DIR__ . '/theme.inc';
   require_once __DIR__ . '/pager.inc';
-  require_once __DIR__ . '/../../' . settings()->get('menu_inc', 'core/includes/menu.inc');
+  require_once __DIR__ . '/../../' . Settings::get('menu_inc', 'core/includes/menu.inc');
   require_once __DIR__ . '/tablesort.inc';
   require_once __DIR__ . '/file.inc';
   require_once __DIR__ . '/unicode.inc';
@@ -3105,9 +2941,10 @@ function _drupal_bootstrap_code() {
   // Set the allowed protocols once we have the config available.
   $allowed_protocols = \Drupal::config('system.filter')->get('protocols');
   if (!isset($allowed_protocols)) {
-    // filter_xss_admin() is called by the installer and update.php, in which
-    // case the configuration may not exist (yet). Provide a minimal default set
-    // of allowed protocols for these cases.
+    // \Drupal\Component\Utility\UrlHelper::filterBadProtocol() is called by the
+    // installer and update.php, in which case the configuration may not exist
+    // (yet). Provide a minimal default set of allowed protocols for these
+    // cases.
     $allowed_protocols = array('http', 'https');
   }
   UrlHelper::setAllowedProtocols($allowed_protocols);
@@ -3169,7 +3006,7 @@ function drupal_page_set_cache(Response $response, Request $request) {
         // because by the time it is read, the configuration might change.
         'page_compressed' => $page_compressed,
       ),
-      'tags' => array('content' => TRUE) + drupal_cache_tags_page_get($response),
+      'tags' => HtmlViewSubscriber::convertHeaderToCacheTags($response->headers->get('X-Drupal-Cache-Tags')),
       'expire' => Cache::PERMANENT,
       'created' => REQUEST_TIME,
     );
@@ -3192,7 +3029,7 @@ function drupal_page_set_cache(Response $response, Request $request) {
       if ($page_compressed) {
         $cache->data['body'] = gzencode($cache->data['body'], 9, FORCE_GZIP);
       }
-      \Drupal::cache('page')->set($cache->cid, $cache->data, $cache->expire, $cache->tags);
+      \Drupal::cache('render')->set($cache->cid, $cache->data, $cache->expire, $cache->tags);
     }
     return $cache;
   }
@@ -3491,7 +3328,7 @@ function drupal_pre_render_link($element) {
  */
 function drupal_pre_render_links($element) {
   $element += array('#links' => array(), '#attached' => array());
-  foreach (element_children($element) as $key) {
+  foreach (Element::children($element) as $key) {
     $child = &$element[$key];
     // If the child has links which have not been printed yet and the user has
     // access to it, merge its links in to the parent.
@@ -3653,7 +3490,8 @@ function drupal_render_page($page) {
  *       required. If 'cid' is set, 'keys' is ignored. Use only if you have
  *       special requirements.
  *     - 'expire': Set to one of the cache lifetime constants.
- *     - 'bin': Specify a cache bin to cache the element in. Default is 'cache'.
+ *     - 'bin': Specify a cache bin to cache the element in. Default is
+ *       'default'.
  *   - If this element has #type defined and the default attributes for this
  *     element have not already been merged in (#defaults_loaded = TRUE) then
  *     the defaults for this type of element, defined in hook_element_info(),
@@ -3665,9 +3503,10 @@ function drupal_render_page($page) {
  *     #pre_render functions have been called, #printed is checked a second time
  *     in case a #pre_render function flags the element as printed.
  *   - The child elements of this element are sorted by weight using uasort() in
- *     element_children(). Since this is expensive, when passing already sorted
- *     elements to drupal_render(), for example from a database query, set
- *     $elements['#sorted'] = TRUE to avoid sorting them a second time.
+ *     \Drupal\Core\Render\Element::children(). Since this is expensive, when
+ *     passing already sorted elements to drupal_render(), for example from a
+ *     database query, set $elements['#sorted'] = TRUE to avoid sorting them a
+ *     second time.
  *   - The main render phase to produce #children for this element takes place:
  *     - If this element has #theme defined and #theme is an implemented theme
  *       hook/suggestion then _theme() is called and must render both the element
@@ -3949,7 +3788,8 @@ function drupal_render(&$elements, $is_recursive_call = FALSE) {
  *   The structured array whose children shall be rendered.
  * @param array $children_keys
  *   (optional) If the keys of the element's children are already known, they
- *   can be passed in to save another run of element_children().
+ *   can be passed in to save another run of
+ *   \Drupal\Core\Render\Element::children().
  *
  * @return string
  *   The rendered HTML of all children of the element.
@@ -3958,7 +3798,7 @@ function drupal_render(&$elements, $is_recursive_call = FALSE) {
  */
 function drupal_render_children(&$element, $children_keys = NULL) {
   if ($children_keys === NULL) {
-    $children_keys = element_children($element);
+    $children_keys = Element::children($element);
   }
   $output = '';
   foreach ($children_keys as $key) {
@@ -4073,7 +3913,7 @@ function drupal_render_cache_get(array $elements) {
   if (!\Drupal::request()->isMethodSafe() || !$cid = drupal_render_cid_create($elements)) {
     return FALSE;
   }
-  $bin = isset($elements['#cache']['bin']) ? $elements['#cache']['bin'] : 'cache';
+  $bin = isset($elements['#cache']['bin']) ? $elements['#cache']['bin'] : 'render';
 
   if (!empty($cid) && $cache = \Drupal::cache($bin)->get($cid)) {
     $cached_element = $cache->data;
@@ -4131,7 +3971,7 @@ function drupal_render_cache_set(&$markup, array $elements) {
     $data['#cache']['tags'] = $elements['#cache']['tags'];
   }
 
-  $bin = isset($elements['#cache']['bin']) ? $elements['#cache']['bin'] : 'cache';
+  $bin = isset($elements['#cache']['bin']) ? $elements['#cache']['bin'] : 'render';
   $expire = isset($elements['#cache']['expire']) ? $elements['#cache']['expire'] : Cache::PERMANENT;
   \Drupal::cache($bin)->set($cid, $data, $expire, $elements['#cache']['tags']);
 }
@@ -4326,7 +4166,7 @@ function drupal_render_collect_post_render_cache(array &$elements, array $callba
   // Collect the #post_render_cache callbacks for all child elements, unless
   // we've already collected them above by retrieving this element (and its
   // children) from the render cache.
-  if (!$retrieved_from_cache && $children = element_children($elements)) {
+  if (!$retrieved_from_cache && $children = Element::children($elements)) {
     foreach ($children as $child) {
       $callbacks = drupal_render_collect_post_render_cache($elements[$child], $callbacks, FALSE);
     }
@@ -4358,7 +4198,7 @@ function drupal_render_collect_attached($elements, $return = FALSE) {
   if (isset($elements['#attached'])) {
     $attached = drupal_merge_attached($attached, $elements['#attached']);
   }
-  if ($children = element_children($elements)) {
+  if ($children = Element::children($elements)) {
     foreach ($children as $child) {
       drupal_render_collect_attached($elements[$child]);
     }
@@ -4408,30 +4248,13 @@ function drupal_render_collect_cache_tags($element, $tags = array()) {
       }
     }
   }
-  if ($children = element_children($element)) {
+  if ($children = Element::children($element)) {
     foreach ($children as $child) {
       $tags = drupal_render_collect_cache_tags($element[$child], $tags);
     }
   }
 
   return $tags;
-}
-
-/**
- * Return the cache tags that were stored during drupal_render_page().
- *
- * @param \Symfony\Component\HttpFoundation\Response $response
- *   The response object.
- * @return array
- *   An array of cache tags.
- *
- * @see \Drupal\Core\EventSubscriber\HtmlViewSubscriber::onHtmlPage()
- */
-function drupal_cache_tags_page_get(Response $response) {
-  if (($tags = $response->headers->get('cache_tags')) && $tags = unserialize($tags)) {
-    return $tags;
-  }
-  return array();
 }
 
 /**
@@ -4459,50 +4282,6 @@ function drupal_render_cid_create($elements) {
     return implode(':', $keys);
   }
   return FALSE;
-}
-
-/**
- * Sorts a structured array by '#weight' property.
- *
- * Callback for uasort() within element_children().
- *
- * @param $a
- *   First item for comparison. The compared items should be associative arrays
- *   that optionally include a '#weight' key.
- * @param $b
- *   Second item for comparison.
- *
- * @return int
- *   The comparison result for uasort().
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\Component\Utility\SortArray::sortByWeightProperty().
- */
-function element_sort($a, $b) {
-  return SortArray::sortByWeightProperty($a, $b);
-}
-
-/**
- * Sorts a structured array by '#title' property.
- *
- * Callback for uasort() within:
- * - system_modules()
- * - theme_simpletest_test_table()
- *
- * @param $a
- *   First item for comparison. The compared items should be associative arrays
- *   that optionally include a '#title' key.
- * @param $b
- *   Second item for comparison.
- *
- * @return int
- *   The comparison result for uasort().
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\Component\Utility\SortArray::sortByTitleProperty().
- */
-function element_sort_by_title($a, $b) {
-  return SortArray::sortByTitleProperty($a, $b);
 }
 
 /**
@@ -4544,27 +4323,6 @@ function element_info($type) {
  */
 function element_info_property($type, $property_name, $default = NULL) {
   return (($info = element_info($type)) && array_key_exists($property_name, $info)) ? $info[$property_name] : $default;
-}
-
-/**
- * Sorts a structured array by 'title' key (no # prefix).
- *
- * Callback for uasort() within system_admin_index().
- *
- * @param $a
- *   First item for comparison. The compared items should be associative arrays
- *   that optionally include a 'title' key.
- * @param $b
- *   Second item for comparison.
- *
- * @return int
- *   The comparison result for uasort().
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\Component\Utility\SortArray::sortByTitleElement().
- */
-function drupal_sort_title($a, $b) {
-  return SortArray::sortByTitleElement($a, $b);
 }
 
 /**
@@ -4684,7 +4442,7 @@ function watchdog_severity_levels() {
  * - Clears all persistent caches:
  *   - The bootstrap cache bin containing base system, module system, and theme
  *     system information.
- *   - The common 'cache' cache bin containing arbitrary caches.
+ *   - The common 'default' cache bin containing arbitrary caches.
  *   - The page cache.
  *   - The URL alias path cache.
  * - Resets all static variables that have been defined via drupal_static().
@@ -4737,9 +4495,7 @@ function drupal_flush_all_caches() {
   // sufficient, since new extensions cannot have any primed caches yet.
   $module_handler->invokeAll('cache_flush');
   foreach (Cache::getBins() as $service_id => $cache_backend) {
-    if ($service_id != 'cache.menu') {
-      $cache_backend->deleteAll();
-    }
+    $cache_backend->deleteAll();
   }
 
   // Flush asset file caches.

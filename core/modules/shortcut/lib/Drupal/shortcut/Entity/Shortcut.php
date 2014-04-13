@@ -8,7 +8,7 @@
 namespace Drupal\shortcut\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
-use Drupal\Core\Entity\EntityStorageControllerInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\FieldDefinition;
 use Drupal\Core\Url;
@@ -27,7 +27,7 @@ use Drupal\shortcut\ShortcutInterface;
  *       "add" = "Drupal\shortcut\ShortcutFormController",
  *       "delete" = "Drupal\shortcut\Form\ShortcutDeleteForm"
  *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationController"
+ *     "translation" = "Drupal\content_translation\ContentTranslationHandler"
  *   },
  *   base_table = "shortcut",
  *   data_table = "shortcut_field_data",
@@ -110,8 +110,8 @@ class Shortcut extends ContentEntityBase implements ShortcutInterface {
   /**
    * {@inheritdoc}
    */
-  public static function preCreate(EntityStorageControllerInterface $storage_controller, array &$values) {
-    parent::preCreate($storage_controller, $values);
+  public static function preCreate(EntityStorageInterface $storage, array &$values) {
+    parent::preCreate($storage, $values);
 
     if (!isset($values['shortcut_set'])) {
       $values['shortcut_set'] = 'default';
@@ -121,8 +121,8 @@ class Shortcut extends ContentEntityBase implements ShortcutInterface {
   /**
    * {@inheritdoc}
    */
-  public function preSave(EntityStorageControllerInterface $storage_controller) {
-    parent::preSave($storage_controller);
+  public function preSave(EntityStorageInterface $storage) {
+    parent::preSave($storage);
 
     $url = Url::createFromPath($this->path->value);
     $this->setRouteName($url->getRouteName());
@@ -136,7 +136,8 @@ class Shortcut extends ContentEntityBase implements ShortcutInterface {
     $fields['id'] = FieldDefinition::create('integer')
       ->setLabel(t('ID'))
       ->setDescription(t('The ID of the shortcut.'))
-      ->setReadOnly(TRUE);
+      ->setReadOnly(TRUE)
+      ->setSetting('unsigned', TRUE);
 
     $fields['uuid'] = FieldDefinition::create('uuid')
       ->setLabel(t('UUID'))
@@ -150,9 +151,21 @@ class Shortcut extends ContentEntityBase implements ShortcutInterface {
       ->setRequired(TRUE);
 
     $fields['title'] = FieldDefinition::create('string')
-      ->setLabel(t('Title'))
+      ->setLabel(t('Name'))
       ->setDescription(t('The name of the shortcut.'))
-      ->setTranslatable(TRUE);
+      ->setRequired(TRUE)
+      ->setTranslatable(TRUE)
+      ->setSettings(array(
+        'default_value' => '',
+        'max_length' => 255,
+      ))
+      ->setDisplayOptions('form', array(
+        'type' => 'string',
+        'weight' => -10,
+        'settings' => array(
+          'size' => 40,
+        ),
+      ));
 
     $fields['weight'] = FieldDefinition::create('integer')
       ->setLabel(t('Weight'))

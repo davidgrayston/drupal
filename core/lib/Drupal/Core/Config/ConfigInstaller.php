@@ -49,6 +49,20 @@ class ConfigInstaller implements ConfigInstallerInterface {
   protected $eventDispatcher;
 
   /**
+   * The configuration storage that provides the default configuration.
+   *
+   * @var \Drupal\Core\Config\StorageInterface
+   */
+  protected $sourceStorage;
+
+  /**
+   * Is configuration being created as part of a configuration sync.
+   *
+   * @var bool
+   */
+  protected $isSyncing = FALSE;
+
+  /**
    * Constructs the configuration installer.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -75,7 +89,7 @@ class ConfigInstaller implements ConfigInstallerInterface {
    */
   public function installDefaultConfig($type, $name) {
     // Get all default configuration owned by this extension.
-    $source_storage = new ExtensionInstallStorage($this->activeStorage);
+    $source_storage = $this->getSourceStorage();
     $config_to_install = $source_storage->listAll($name . '.');
 
     // Work out if this extension provides default configuration for any other
@@ -87,22 +101,27 @@ class ConfigInstaller implements ConfigInstallerInterface {
         // extension has a configuration schema directory.
         $this->typedConfig->clearCachedDefinitions();
       }
-      $default_storage = new FileStorage($config_dir);
-      $other_module_config = array_filter($default_storage->listAll(), function ($value) use ($name) {
-        return !preg_match('/^' . $name . '\./', $value);
-      });
+      // If not installing the core base system default configuration, retrieve
+      // the list of integration configuration of currently enabled extensions.
+      if ($type !== 'core') {
+        $default_storage = new FileStorage($config_dir);
+        $other_module_config = array_filter($default_storage->listAll(), function ($value) use ($name) {
+          return !preg_match('/^' . $name . '\./', $value);
+        });
+        $enabled_extensions = array();
+        // Read enabled extensions directly from configuration to avoid circular
+        // dependencies with ModuleHandler and ThemeHandler.
+        $extension_config = $this->configFactory->get('core.extension');
+        $enabled_extensions += array_keys((array) $extension_config->get('module'));
+        $enabled_extensions += array_keys((array) $extension_config->get('theme'));
 
-      // Read enabled extensions directly from configuration to avoid circular
-      // dependencies with ModuleHandler and ThemeHandler.
-      $enabled_extensions = array_keys((array) $this->configFactory->get('system.module')->get('enabled'));
-      $enabled_extensions += array_keys((array) $this->configFactory->get('system.theme')->get('enabled'));
+        $other_module_config = array_filter($other_module_config, function ($config_name) use ($enabled_extensions) {
+          $provider = Unicode::substr($config_name, 0, strpos($config_name, '.'));
+          return in_array($provider, $enabled_extensions);
+        });
 
-      $other_module_config = array_filter($other_module_config, function ($config_name) use ($enabled_extensions) {
-        $provider = Unicode::substr($config_name, 0, strpos($config_name, '.'));
-        return in_array($provider, $enabled_extensions);
-      });
-
-      $config_to_install = array_merge($config_to_install, $other_module_config);
+        $config_to_install = array_merge($config_to_install, $other_module_config);
+      }
     }
 
     if (!empty($config_to_install)) {
@@ -125,9 +144,19 @@ class ConfigInstaller implements ConfigInstallerInterface {
           $new_config->setData($data[$name]);
         }
         if ($entity_type = $this->configManager->getEntityTypeIdByName($name)) {
+
+          // If we are syncing do not create configuration entities. Pluggable
+          // configuration entities can have dependencies on modules that are
+          // not yet enabled. This approach means that any code that expects
+          // default configuration entities to exist will be unstable after the
+          // module has been enabled and before the config entity has been
+          // imported.
+          if ($this->isSyncing) {
+            continue;
+          }
           $entity_storage = $this->configManager
             ->getEntityManager()
-            ->getStorageController($entity_type);
+            ->getStorage($entity_type);
           // It is possible that secondary writes can occur during configuration
           // creation. Updates of such configuration are allowed.
           if ($this->activeStorage->exists($name)) {
@@ -154,4 +183,49 @@ class ConfigInstaller implements ConfigInstallerInterface {
     $this->configFactory->reset();
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function setSourceStorage(StorageInterface $storage) {
+    $this->sourceStorage = $storage;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function resetSourceStorage() {
+    $this->sourceStorage = null;
+    return $this;
+  }
+
+  /**
+   * Gets the configuration storage that provides the default configuration.
+   *
+   * @return \Drupal\Core\Config\StorageInterface
+   *   The configuration storage that provides the default configuration.
+   */
+  public function getSourceStorage() {
+    if (!isset($this->sourceStorage)) {
+      // Default to using the ExtensionInstallStorage which searches extension's
+      // config directories for default configuration.
+      $this->sourceStorage = new ExtensionInstallStorage($this->activeStorage);
+    }
+    return $this->sourceStorage;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setSyncing($status) {
+    $this->isSyncing = $status;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isSyncing() {
+    return $this->isSyncing;
+  }
 }

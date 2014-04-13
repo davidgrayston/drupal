@@ -7,6 +7,8 @@
 
 use Drupal\block\BlockInterface;
 use Drupal\Component\Plugin\Exception\PluginException;
+use Drupal\language\Entity\Language;
+use Drupal\system\Entity\Menu;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 
 /**
@@ -93,20 +95,6 @@ function block_permission() {
 }
 
 /**
- * Implements hook_menu_link_defaults().
- */
-function block_menu_link_defaults() {
-  $links['block.admin.structure'] = array(
-    'link_title' => 'Block layout',
-    'parent' => 'system.admin.structure',
-    'description' => 'Configure what block content appears in your site\'s sidebars and other regions.',
-    'route_name' => 'block.admin_display',
-  );
-
-  return $links;
-}
-
-/**
  * Implements hook_page_build().
  *
  * Renders blocks into their regions.
@@ -170,7 +158,7 @@ function block_get_blocks_by_region($region) {
   $build = array();
   if ($list = block_list($region)) {
     foreach ($list as $key => $block) {
-      if ($block->access()) {
+      if ($block->access('view')) {
         $build[$key] = entity_view($block, 'block');
       }
     }
@@ -343,7 +331,7 @@ function block_rebuild() {
 function block_theme_suggestions_block(array $variables) {
   $suggestions = array();
 
-  $suggestions[] = 'block__' . $variables['elements']['#configuration']['module'];
+  $suggestions[] = 'block__' . $variables['elements']['#configuration']['provider'];
   // Hyphens (-) and underscores (_) play a special role in theme suggestions.
   // Theme suggestions should only contain underscores, because within
   // drupal_find_theme_templates(), underscores are converted to hyphens to
@@ -405,7 +393,7 @@ function template_preprocess_block(&$variables) {
   }
 
   $variables['attributes']['class'][] = 'block';
-  $variables['attributes']['class'][] = drupal_html_class('block-' . $variables['configuration']['module']);
+  $variables['attributes']['class'][] = drupal_html_class('block-' . $variables['configuration']['provider']);
 
   // Add default class for block content.
   $variables['content_attributes']['class'][] = 'content';
@@ -435,25 +423,27 @@ function block_user_role_delete($role) {
 /**
  * Implements hook_menu_delete().
  */
-function block_menu_delete($menu) {
-  foreach (entity_load_multiple('block') as $block) {
-    if ($block->get('plugin') == 'system_menu_block:' . $menu->id()) {
-      $block->delete();
+function block_menu_delete(Menu $menu) {
+  if (!$menu->isSyncing()) {
+    foreach (entity_load_multiple('block') as $block) {
+      if ($block->get('plugin') == 'system_menu_block:' . $menu->id()) {
+        $block->delete();
+      }
     }
   }
 }
 
 /**
- * Implements hook_language_delete().
+ * Implements hook_ENTITY_TYPE_delete() for 'language_entity'.
  *
  * Delete the potential block visibility settings of the deleted language.
  */
-function block_language_delete($language) {
+function block_language_entity_delete(Language $language) {
   // Remove the block visibility settings for the deleted language.
   foreach (entity_load_multiple('block') as $block) {
     $visibility = $block->get('visibility');
-    if (isset($visibility['language']['langcodes'][$language->id])) {
-      unset($visibility['language']['langcodes'][$language->id]);
+    if (isset($visibility['language']['langcodes'][$language->id()])) {
+      unset($visibility['language']['langcodes'][$language->id()]);
       $block->set('visibility', $visibility);
       $block->save();
     }

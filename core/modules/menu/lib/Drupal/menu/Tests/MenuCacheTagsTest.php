@@ -52,13 +52,15 @@ class MenuCacheTagsTest extends PageCacheTagsTestBase {
       'menu_name' => 'llama',
     ));
     $menu_link->save();
-    $block = $this->drupalPlaceBlock('system_menu_block:llama', array('label' => 'Llama', 'module' => 'system', 'region' => 'footer'));
+    $block = $this->drupalPlaceBlock('system_menu_block:llama', array('label' => 'Llama', 'provider' => 'system', 'region' => 'footer'));
 
     // Prime the page cache.
     $this->verifyPageCache($path, 'MISS');
 
     // Verify a cache hit, but also the presence of the correct cache tags.
     $expected_tags = array(
+      'theme:stark',
+      'theme_global_settings:1',
       'content:1',
       'block_view:1',
       'block:' . $block->id(),
@@ -117,7 +119,7 @@ class MenuCacheTagsTest extends PageCacheTagsTestBase {
     $this->verifyPageCache($path, 'MISS');
 
     // Verify a cache hit.
-    $this->verifyPageCache($path, 'HIT', array('content:1'));
+    $this->verifyPageCache($path, 'HIT', array('content:1', 'theme:stark', 'theme_global_settings:1'));
   }
 
 }

@@ -28,7 +28,7 @@ abstract class BlockBase extends PluginBase implements BlockPluginInterface {
   /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->setConfiguration($configuration);
@@ -61,7 +61,7 @@ abstract class BlockBase extends PluginBase implements BlockPluginInterface {
   protected function baseConfigurationDefaults() {
     return array(
       'label' => '',
-      'module' => $this->pluginDefinition['module'],
+      'provider' => $this->pluginDefinition['provider'],
       'label_display' => BlockInterface::BLOCK_LABEL_VISIBLE,
       'cache' => array(
         'max_age' => 0,
@@ -105,9 +105,9 @@ abstract class BlockBase extends PluginBase implements BlockPluginInterface {
    */
   public function buildConfigurationForm(array $form, array &$form_state) {
     $definition = $this->getPluginDefinition();
-    $form['module'] = array(
+    $form['provider'] = array(
       '#type' => 'value',
-      '#value' => $definition['module'],
+      '#value' => $definition['provider'],
     );
 
     $form['admin_label'] = array(
@@ -218,7 +218,7 @@ abstract class BlockBase extends PluginBase implements BlockPluginInterface {
     if (!form_get_errors($form_state)) {
       $this->configuration['label'] = $form_state['values']['label'];
       $this->configuration['label_display'] = $form_state['values']['label_display'];
-      $this->configuration['module'] = $form_state['values']['module'];
+      $this->configuration['provider'] = $form_state['values']['provider'];
       $this->configuration['cache'] = $form_state['values']['cache'];
       $this->blockSubmit($form, $form_state);
     }
@@ -287,7 +287,7 @@ abstract class BlockBase extends PluginBase implements BlockPluginInterface {
    * {@inheritdoc}
    */
   public function getCacheBin() {
-    return 'block';
+    return 'render';
   }
 
   /**

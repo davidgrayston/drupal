@@ -11,6 +11,7 @@ use Drupal\Component\Utility\String;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Render\Element;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Drupal\views\Plugin\views\PluginBase;
@@ -87,7 +88,7 @@ abstract class HandlerBase extends PluginBase {
   /**
    * Constructs a Handler object.
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->is_handler = TRUE;
     $this->optional = !empty($configuration['optional']);
@@ -263,14 +264,9 @@ abstract class HandlerBase extends PluginBase {
       case 'lower':
         return drupal_strtolower($string);
       case 'ucfirst':
-        return drupal_strtoupper(drupal_substr($string, 0, 1)) . drupal_substr($string, 1);
+        return Unicode::ucfirst($string);
       case 'ucwords':
-        if (Unicode::getStatus() == Unicode::STATUS_MULTIBYTE) {
-          return mb_convert_case($string, MB_CASE_TITLE);
-        }
-        else {
-          return ucwords($string);
-        }
+        return Unicode::ucwords($string);
     }
   }
 
@@ -449,7 +445,7 @@ abstract class HandlerBase extends PluginBase {
     // these defaults from getting wiped out. This setting will only be TRUE
     // during a 2nd pass rerender.
     if (!empty($form_state['force_expose_options'])) {
-      foreach (element_children($form['expose']) as $id) {
+      foreach (Element::children($form['expose']) as $id) {
         if (isset($form['expose'][$id]['#default_value']) && !isset($form['expose'][$id]['#value'])) {
           $form['expose'][$id]['#value'] = $form['expose'][$id]['#default_value'];
         }
@@ -868,7 +864,7 @@ abstract class HandlerBase extends PluginBase {
     // Run it through the handler's submit function.
     $this->submitOptionsForm($form['options'], $form_state);
     $item = $this->options;
-    $types = ViewExecutable::viewsHandlerTypes();
+    $types = ViewExecutable::getHandlerTypes();
 
     // For footer/header $handler_type is area but $type is footer/header.
     // For all other handle types it's the same.
