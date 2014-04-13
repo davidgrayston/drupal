@@ -62,8 +62,7 @@ class ConfigTest extends UnitTestCase {
     $this->storage = $this->getMock('Drupal\Core\Config\StorageInterface');
     $this->event_dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
     $this->typed_config = $this->getMock('\Drupal\Core\Config\TypedConfigManagerInterface');
-    $this->language = $this->getMock('\Drupal\Core\Language\Language');
-    $this->config = new Config('config.test', $this->storage, $this->event_dispatcher, $this->typed_config, $this->language);
+    $this->config = new Config('config.test', $this->storage, $this->event_dispatcher, $this->typed_config);
   }
 
   /**
@@ -140,12 +139,6 @@ class ConfigTest extends UnitTestCase {
     // Save so that the original data is stored.
     $this->config->save();
 
-    // Set language override data and check value before and after save.
-    $this->config->setLanguageOverride(array('a' => 2));
-    $this->assertEquals($this->config->get('a'), 2);
-    $this->config->save();
-    $this->assertEquals($this->config->get('a'), 2);
-
     // Set module override data and check value before and after save.
     $this->config->setModuleOverride(array('a' => 3));
     $this->assertEquals($this->config->get('a'), 3);
@@ -158,11 +151,10 @@ class ConfigTest extends UnitTestCase {
     $this->config->save();
     $this->assertEquals($this->config->get('a'), 4);
 
-    // Set module and language again to ensure override order is correct.
-    $this->config->setLanguageOverride(array('a' => 2));
+    // Set module again to ensure override order is correct.
     $this->config->setModuleOverride(array('a' => 3));
 
-    // 'a' should still be '4' after setting module and language overrides.
+    // 'a' should still be '4' after setting module overrides.
     $this->assertEquals($this->config->get('a'), 4);
     $this->config->save();
     $this->assertEquals($this->config->get('a'), 4);
@@ -281,13 +273,6 @@ class ConfigTest extends UnitTestCase {
     // Check that data has merged correctly.
     $mergedData = array('a' => 2, 'b' => 2, 'c' => array('d' => 3, 'f' => 5), 'e' => 4);
     $this->assertEquals($mergedData, $this->config->getRawData());
-  }
-
-  /**
-   * Check language is set.
-   */
-  public function testGetLanguage() {
-    $this->assertInstanceOf('\Drupal\Core\Language\Language', $this->config->getLanguage());
   }
 
   /**
