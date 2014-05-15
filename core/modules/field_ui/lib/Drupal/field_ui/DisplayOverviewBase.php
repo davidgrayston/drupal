@@ -57,7 +57,7 @@ abstract class DisplayOverviewBase extends OverviewBase {
    *   The field type manager.
    * @param \Drupal\Component\Plugin\PluginManagerBase $plugin_manager
    *   The widget or formatter plugin manager.
-   * @param \Drupal\Core\Config\ConfigFactory $config_factory
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The configuration factory.
    */
   public function __construct(EntityManagerInterface $entity_manager, FieldTypePluginManagerInterface $field_type_manager, PluginManagerBase $plugin_manager, ConfigFactoryInterface $config_factory) {
@@ -234,7 +234,11 @@ abstract class DisplayOverviewBase extends OverviewBase {
     );
 
     $form['actions'] = array('#type' => 'actions');
-    $form['actions']['submit'] = array('#type' => 'submit', '#value' => $this->t('Save'));
+    $form['actions']['submit'] = array(
+      '#type' => 'submit',
+      '#button_type' => 'primary',
+      '#value' => $this->t('Save'),
+    );
 
     $form['#attached']['library'][] = 'field_ui/drupal.field_ui';
 
@@ -360,6 +364,7 @@ abstract class DisplayOverviewBase extends OverviewBase {
               '#type' => 'actions',
               'save_settings' => $base_button + array(
                 '#type' => 'submit',
+                '#button_type' => 'primary',
                 '#name' => $field_name . '_plugin_settings_update',
                 '#value' => $this->t('Update'),
                 '#op' => 'update',

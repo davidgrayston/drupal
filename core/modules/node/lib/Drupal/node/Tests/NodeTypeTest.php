@@ -6,6 +6,7 @@
  */
 
 namespace Drupal\node\Tests;
+use Drupal\field\Entity\FieldInstanceConfig;
 
 /**
  * Tests related to node types.
@@ -83,7 +84,7 @@ class NodeTypeTest extends NodeTestBase {
     $web_user = $this->drupalCreateUser(array('bypass node access', 'administer content types', 'administer node fields'));
     $this->drupalLogin($web_user);
 
-    $instance = field_info_instance('node', 'body', 'page');
+    $instance = FieldInstanceConfig::loadByName('node', 'page', 'body');
     $this->assertEqual($instance->getLabel(), 'Body', 'Body field was found.');
 
     // Verify that title and body fields are displayed.
@@ -193,9 +194,13 @@ class NodeTypeTest extends NodeTestBase {
     $this->assertText(t('This action cannot be undone.'), 'The node type deletion confirmation form is available.');
     // Test that forum node type could not be deleted while forum active.
     $this->container->get('module_handler')->install(array('forum'));
+    $this->drupalGet('admin/structure/types/manage/forum');
+    $this->assertNoLink(t('Delete'));
     $this->drupalGet('admin/structure/types/manage/forum/delete');
     $this->assertResponse(403);
     $this->container->get('module_handler')->uninstall(array('forum'));
+    $this->drupalGet('admin/structure/types/manage/forum');
+    $this->assertLink(t('Delete'));
     $this->drupalGet('admin/structure/types/manage/forum/delete');
     $this->assertResponse(200);
   }

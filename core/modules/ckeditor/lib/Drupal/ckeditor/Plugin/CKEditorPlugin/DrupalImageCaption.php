@@ -42,7 +42,7 @@ class DrupalImageCaption extends PluginBase implements CKEditorPluginInterface, 
    */
   public function getLibraries(Editor $editor) {
     return array(
-      'ckeditor/drupal.ckeditor.drupalimagecaption-theme',
+      'ckeditor/drupal.ckeditor.plugins.drupalimagecaption',
     );
   }
 
@@ -57,7 +57,11 @@ class DrupalImageCaption extends PluginBase implements CKEditorPluginInterface, 
    * {@inheritdoc}
    */
   public function getConfig(Editor $editor) {
-    return array();
+    return array(
+      'image2_captionedClass' => 'caption caption-img',
+      'image2_alignClasses' => array('align-left', 'align-center', 'align-right'),
+      'drupalImageCaption_captionPlaceholderText' => t('Enter caption here'),
+    );
   }
 
   /**
@@ -69,7 +73,8 @@ class DrupalImageCaption extends PluginBase implements CKEditorPluginInterface, 
     // enabled.
     if ($editor->getFilterFormat()->filters('filter_caption')->status) {
       $enabled = FALSE;
-      foreach ($editor->settings['toolbar']['rows'] as $row) {
+      $settings = $editor->getSettings();
+      foreach ($settings['toolbar']['rows'] as $row) {
         foreach ($row as $group) {
           foreach ($group['items'] as $button) {
             if ($button === 'DrupalImage') {

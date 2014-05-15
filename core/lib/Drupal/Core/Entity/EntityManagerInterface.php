@@ -17,10 +17,14 @@ interface EntityManagerInterface extends PluginManagerInterface {
   /**
    * Builds a list of entity type labels suitable for a Form API options list.
    *
+   * @param bool $group
+   *   (optional) Whether to group entity types by plugin group (e.g. 'content',
+   *   'config'). Defaults to FALSE.
+   *
    * @return array
    *   An array of entity type labels, keyed by entity type name.
    */
-  public function getEntityTypeLabels();
+  public function getEntityTypeLabels($group = FALSE);
 
   /**
    * Gets the base field definitions for a content entity type.
@@ -55,6 +59,37 @@ interface EntityManagerInterface extends PluginManagerInterface {
    *   The array of field definitions for the bundle, keyed by field name.
    */
   public function getFieldDefinitions($entity_type_id, $bundle);
+
+  /**
+   * Gets the field storage definitions for a content entity type.
+   *
+   * This returns all field storage definitions for base fields and bundle
+   * fields of an entity type. Note that field storage definitions of a base
+   * field equal the full base field definition (i.e. they implement
+   * FieldDefinitionInterface), while the storage definitions for bundle fields
+   * may implement FieldStorageDefinitionInterface only.
+   *
+   * @param string $entity_type_id
+   *   The entity type ID. Only content entities are supported.
+   *
+   * @return \Drupal\Core\Field\FieldStorageDefinitionInterface[]
+   *   The array of field storage definitions for the entity type, keyed by
+   *   field name.
+   *
+   * @see \Drupal\Core\Field\FieldStorageDefinitionInterface
+   */
+  public function getFieldStorageDefinitions($entity_type_id);
+
+  /**
+   * Collects a lightweight map of fields across bundles.
+   *
+   * @return array
+   *   An array keyed by entity type. Each value is an array which keys are
+   *   field names and value is an array with two entries:
+   *   - type: The field type.
+   *   - bundles: The bundles in which the field appears.
+   */
+  public function getFieldMap();
 
   /**
    * Creates a new access controller instance.
@@ -130,17 +165,17 @@ interface EntityManagerInterface extends PluginManagerInterface {
   public function getListBuilder($entity_type);
 
   /**
-   * Creates a new form controller instance.
+   * Creates a new form instance.
    *
    * @param string $entity_type
-   *   The entity type for this form controller.
+   *   The entity type for this form.
    * @param string $operation
    *   The name of the operation to use, e.g., 'default'.
    *
-   * @return \Drupal\Core\Entity\EntityFormControllerInterface
-   *   A form controller instance.
+   * @return \Drupal\Core\Entity\EntityFormInterface
+   *   A form instance.
    */
-  public function getFormController($entity_type, $operation);
+  public function getFormObject($entity_type, $operation);
 
   /**
    * Clears static and persistent field definition caches.

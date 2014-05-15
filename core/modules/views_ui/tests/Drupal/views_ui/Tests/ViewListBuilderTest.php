@@ -14,6 +14,9 @@ use Drupal\views\Entity\View;
 use Drupal\views\ViewExecutableFactory;
 use Drupal\views_ui\ViewListBuilder;
 
+/**
+ * @coversDefaultClass \Drupal\views_ui\ViewListBuilder
+ */
 class ViewListBuilderTest extends UnitTestCase {
 
   public static function getInfo() {
@@ -28,6 +31,7 @@ class ViewListBuilderTest extends UnitTestCase {
    * Tests the listing of displays on a views list builder.
    *
    * @see \Drupal\views_ui\ViewListBuilder::getDisplaysList()
+   * @covers ::buildRow
    */
   public function testBuildRowEntityList() {
     $storage = $this->getMockBuilder('Drupal\Core\Config\Entity\ConfigEntityStorage')
@@ -78,10 +82,11 @@ class ViewListBuilderTest extends UnitTestCase {
       array(array(), 'default', $display_manager->getDefinition('default'))
     );
     $route_provider = $this->getMock('Drupal\Core\Routing\RouteProviderInterface');
-    $state = $this->getMock('\Drupal\Core\KeyValueStore\StateInterface');
+    $state = $this->getMock('\Drupal\Core\State\StateInterface');
+    $form_error = $this->getMock('Drupal\Core\Form\FormErrorInterface');
     $page_display = $this->getMock('Drupal\views\Plugin\views\display\Page',
       array('initDisplay', 'getPath'),
-      array(array(), 'default', $display_manager->getDefinition('page'), $route_provider, $state)
+      array(array(), 'default', $display_manager->getDefinition('page'), $route_provider, $state, $form_error)
     );
     $page_display->expects($this->any())
       ->method('getPath')
@@ -125,7 +130,7 @@ class ViewListBuilderTest extends UnitTestCase {
     // because t() is called on there.
     $entity_type = $this->getMock('Drupal\Core\Entity\EntityTypeInterface');
     $view_list_builder = new TestViewListBuilder($entity_type, $storage, $display_manager);
-    $view_list_builder->setTranslationManager($this->getStringTranslationStub());
+    $view_list_builder->setStringTranslation($this->getStringTranslationStub());
 
     $view = new View($values, 'view');
 

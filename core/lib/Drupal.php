@@ -336,7 +336,7 @@ class Drupal {
    * needs to be the same across development, production, etc. environments
    * (for example, the system maintenance message) should use \Drupal::config() instead.
    *
-   * @return \Drupal\Core\KeyValueStore\StateInterface
+   * @return \Drupal\Core\State\StateInterface
    */
   public static function state() {
     return static::$container->get('state');
@@ -349,7 +349,7 @@ class Drupal {
    *   A guzzle http client instance.
    */
   public static function httpClient() {
-    return static::$container->get('http_default_client');
+    return static::$container->get('http_client');
   }
 
   /**
@@ -618,7 +618,7 @@ class Drupal {
    * @return bool
    *   Returns TRUE is syncing flag set.
    */
-  public function isConfigSyncing() {
+  public static function isConfigSyncing() {
     return static::$container->get('config.installer')->isSyncing();
   }
 

@@ -9,14 +9,21 @@ use Drupal\menu_link\Entity\MenuLink;
 
 /**
  * Implements hook_menu_link_defaults_alter().
- *
- * Many of the machine names here are slightly different from the route name.
- * Since the machine name is arbitrary, this helps ensure that core does not
- * add mistaken assumptions about the correlation.
  */
 function menu_test_menu_link_defaults_alter(&$links) {
+  // Many of the machine names here are slightly different from the route name.
+  // Since the machine name is arbitrary, this helps ensure that core does not
+  // add mistaken assumptions about the correlation.
   $links['menu_test.menu_name_test']['menu_name'] = menu_test_menu_name();
   $links['menu_test.context']['title'] = \Drupal::config('menu_test.menu_item')->get('title');
+
+  // Adds a custom menu link.
+  $links['menu_test.custom'] = array(
+    'title' => 'Custom link',
+    'route_name' => 'menu_test.custom',
+    'description' => 'Custom link used to check the integrity of manually added menu links.',
+    'parent' => 'menu_test',
+  );
 }
 
 /**
@@ -110,27 +117,6 @@ function menu_test_menu_trail_callback() {
     $menu_tree->setPath($menu_path['menu_name'], $menu_path['path']);
   }
   return 'This is menu_test_menu_trail_callback().';
-}
-
-/**
- * Page callback: Sets the active menu trail for our custom 403 and 404 pages.
- *
- * @return string
- *   A text string that can be used for comparison.
- *
- * @see menu_test_menu().
- *
- * @deprecated Use \Drupal\menu_test\Controller\MenuTestController::custom403404()
- */
-function menu_test_custom_403_404_callback() {
-  // When requested by one of the TrailTest tests, record the final
-  // active trail now that the user has been redirected to the custom 403 or
-  // 404 page.
-  if (\Drupal::state()->get('menu_test.record_active_trail') ?: FALSE) {
-    \Drupal::state()->set('menu_test.active_trail_final', menu_get_active_trail());
-  }
-
-  return 'This is menu_test_custom_403_404_callback().';
 }
 
 /**

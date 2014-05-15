@@ -24,10 +24,14 @@ use Drupal\simpletest\DrupalUnitTestBase;
 abstract class ConfigStorageTestBase extends DrupalUnitTestBase {
 
   /**
+   * @var \Drupal\Core\Config\StorageInterface;
+   */
+  protected $storage;
+
+  /**
    * Tests storage CRUD operations.
    *
    * @todo Coverage: Trigger PDOExceptions / Database exceptions.
-   * @todo Coverage: Trigger Yaml's ParseException and DumpException.
    */
   function testCRUD() {
     $name = 'config_test.storage';
@@ -38,17 +42,6 @@ abstract class ConfigStorageTestBase extends DrupalUnitTestBase {
     // Reading a non-existing name returns FALSE.
     $data = $this->storage->read($name);
     $this->assertIdentical($data, FALSE);
-
-    // Reading a name containing non-decodeable data returns FALSE.
-    $this->insert($name, '');
-    $data = $this->storage->read($name);
-    $this->assertIdentical($data, FALSE);
-
-    $this->update($name, 'foo');
-    $data = $this->storage->read($name);
-    $this->assertIdentical($data, FALSE);
-
-    $this->delete($name);
 
     // Writing data returns TRUE and the data has been written.
     $data = array('foo' => 'bar');
@@ -91,10 +84,6 @@ abstract class ConfigStorageTestBase extends DrupalUnitTestBase {
     $result = $this->storage->delete($name);
     $this->assertIdentical($result, FALSE);
 
-    // Reading from a non-existing storage bin returns FALSE.
-    $result = $this->invalidStorage->read($name);
-    $this->assertIdentical($result, FALSE);
-
     // Deleting all names with prefix deletes the appropriate data and returns
     // TRUE.
     $files = array(
@@ -110,36 +99,6 @@ abstract class ConfigStorageTestBase extends DrupalUnitTestBase {
     $names = $this->storage->listAll('config_test.');
     $this->assertIdentical($result, TRUE);
     $this->assertIdentical($names, array());
-
-    // Writing to a non-existing storage bin throws an exception.
-    try {
-      $this->invalidStorage->write($name, array('foo' => 'bar'));
-      $this->fail('Exception not thrown upon writing to a non-existing storage bin.');
-    }
-    catch (\Exception $e) {
-      $class = get_class($e);
-      $this->pass($class . ' thrown upon writing to a non-existing storage bin.');
-    }
-
-    // Deleting from a non-existing storage bin throws an exception.
-    try {
-      $this->invalidStorage->delete($name);
-      $this->fail('Exception not thrown upon deleting from a non-existing storage bin.');
-    }
-    catch (\Exception $e) {
-      $class = get_class($e);
-      $this->pass($class . ' thrown upon deleting from a non-existing storage bin.');
-    }
-
-    // Listing on a non-existing storage bin throws an exception.
-    try {
-      $this->invalidStorage->listAll();
-      $this->fail('Exception not thrown upon listing from a non-existing storage bin.');
-    }
-    catch (\Exception $e) {
-      $class = get_class($e);
-      $this->pass($class . ' thrown upon listing from a non-existing storage bin.');
-    }
 
     // Test renaming an object that does not exist throws an exception.
     try {
@@ -158,7 +117,44 @@ abstract class ConfigStorageTestBase extends DrupalUnitTestBase {
       $class = get_class($e);
       $this->pass($class . ' thrown upon renaming a nonexistent storage bin.');
     }
+  }
 
+  /**
+   * Tests an invalid storage.
+   */
+  public function testInvalidStorage() {
+    $name = 'config_test.storage';
+
+    // Write something to the valid storage to prove that the storages do not
+    // pollute one another.
+    $data = array('foo' => 'bar');
+    $result = $this->storage->write($name, $data);
+    $this->assertIdentical($result, TRUE);
+
+    $raw_data = $this->read($name);
+    $this->assertIdentical($raw_data, $data);
+
+    // Reading from a non-existing storage bin returns FALSE.
+    $result = $this->invalidStorage->read($name);
+    $this->assertIdentical($result, FALSE);
+
+    // Deleting from a non-existing storage bin throws an exception.
+    try {
+      $this->invalidStorage->delete($name);
+      $this->fail('Exception not thrown upon deleting from a non-existing storage bin.');
+    }
+    catch (\Exception $e) {
+      $class = get_class($e);
+      $this->pass($class . ' thrown upon deleting from a non-existing storage bin.');
+    }
+
+    // Listing on a non-existing storage bin returns an empty array.
+    $result = $this->invalidStorage->listAll();
+    $this->assertIdentical($result, array());
+    // Writing to a non-existing storage bin creates the bin.
+    $this->invalidStorage->write($name, array('foo' => 'bar'));
+    $result = $this->invalidStorage->read($name);
+    $this->assertIdentical($result, array('foo' => 'bar'));
   }
 
   /**

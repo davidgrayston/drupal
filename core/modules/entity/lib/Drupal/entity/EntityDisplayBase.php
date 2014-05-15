@@ -11,7 +11,7 @@ use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Entity\Display\EntityDisplayInterface;
-use Drupal\field\Field;
+use Drupal\field\Entity\FieldInstanceConfig;
 
 /**
  * Provides a common base class for entity view and form displays.
@@ -161,10 +161,14 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
       $bundle_entity = \Drupal::entityManager()->getStorage($bundle_entity_type_id)->load($this->bundle);
       $this->addDependency('entity', $bundle_entity->getConfigDependencyName());
     }
+    else {
+      // Depend on the provider of the entity type.
+      $this->addDependency('module', $target_entity_type->getProvider());
+    }
     // Create dependencies on both hidden and visible fields.
     $fields = $this->content + $this->hidden;
     foreach ($fields as $field_name => $component) {
-      $field_instance = Field::fieldInfo()->getInstance($this->targetEntityType, $this->bundle, $field_name);
+      $field_instance = FieldInstanceConfig::loadByName($this->targetEntityType, $this->bundle, $field_name);
       if ($field_instance) {
         $this->addDependency('entity', $field_instance->getConfigDependencyName());
       }
@@ -365,16 +369,23 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
 
     if (!isset($this->fieldDefinitions)) {
       $definitions = \Drupal::entityManager()->getFieldDefinitions($this->targetEntityType, $this->bundle);
-
-      // The display only cares about fields that specify display options.
-      // Discard base fields that are not rendered through formatters / widgets.
-      $display_context = $this->displayContext;
-      $this->fieldDefinitions = array_filter($definitions, function (FieldDefinitionInterface $definition) use ($display_context) {
-        return $definition->getDisplayOptions($display_context);
-      });
+      $this->fieldDefinitions = array_filter($definitions, array($this, 'fieldHasDisplayOptions'));
     }
 
     return $this->fieldDefinitions;
+  }
+
+  /**
+   * Determines if a field has options for a given display.
+   *
+   * @param FieldDefinitionInterface $definition
+   *   A field instance definition.
+   * @return array|null
+   */
+  private function fieldHasDisplayOptions(FieldDefinitionInterface $definition) {
+    // The display only cares about fields that specify display options.
+    // Discard base fields that are not rendered through formatters / widgets.
+    return $definition->getDisplayOptions($this->displayContext);
   }
 
 }

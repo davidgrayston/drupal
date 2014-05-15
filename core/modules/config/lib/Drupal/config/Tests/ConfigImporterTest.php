@@ -30,7 +30,7 @@ class ConfigImporterTest extends DrupalUnitTestBase {
    *
    * @var array
    */
-  public static $modules = array('config_test', 'system');
+  public static $modules = array('config_test', 'system', 'config_import_test');
 
   public static function getInfo() {
     return array(
@@ -42,8 +42,6 @@ class ConfigImporterTest extends DrupalUnitTestBase {
 
   function setUp() {
     parent::setUp();
-
-    $this->installSchema('system', 'config_snapshot');
 
     $this->installConfig(array('config_test'));
     // Installing config_test's default configuration pollutes the global
@@ -114,7 +112,10 @@ class ConfigImporterTest extends DrupalUnitTestBase {
       $this->assertFalse(FALSE, 'ConfigImporterException not thrown, invalid import was not stopped due to mis-matching site UUID.');
     }
     catch (ConfigImporterException $e) {
-      $this->assertEqual($e->getMessage(), 'Site UUID in source storage does not match the target storage.');
+      $this->assertEqual($e->getMessage(), 'There were errors validating the config synchronization.');
+      $error_log = $this->configImporter->getErrors();
+      $expected = array('Site UUID in source storage does not match the target storage.');
+      $this->assertEqual($expected, $error_log);
     }
   }
 
@@ -197,6 +198,10 @@ class ConfigImporterTest extends DrupalUnitTestBase {
     $this->assertFalse(isset($GLOBALS['hook_config_test']['update']));
     $this->assertFalse(isset($GLOBALS['hook_config_test']['predelete']));
     $this->assertFalse(isset($GLOBALS['hook_config_test']['delete']));
+
+    // Verify that hook_config_import_steps_alter() can add steps to
+    // configuration synchronization.
+    $this->assertTrue(isset($GLOBALS['hook_config_test']['config_import_steps_alter']));
 
     // Verify that there is nothing more to import.
     $this->assertFalse($this->configImporter->hasUnprocessedConfigurationChanges());
