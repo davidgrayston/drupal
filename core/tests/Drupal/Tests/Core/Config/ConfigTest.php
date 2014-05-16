@@ -92,8 +92,10 @@ class ConfigTest extends UnitTestCase {
    */
   public function setNameProvider() {
     return array(
-      // Valid name with dot.
-      'test.name',
+      array(
+        // Valid name with dot.
+        'test.name',
+      ),
     );
   }
 
@@ -117,18 +119,7 @@ class ConfigTest extends UnitTestCase {
   public function testSetData($data) {
     $this->config->setData($data);
     $this->assertEquals($data, $this->config->getRawData());
-    foreach ($data as $key => $value) {
-      if (is_array($value)) {
-        // Check each nested value.
-        foreach($value as $nestedKey => $nestedValue) {
-          $this->assertEquals($nestedValue, $this->config->get($key . '.' . $nestedKey));
-        }
-      }
-      else {
-        // Check single value.
-        $this->assertEquals($value, $this->config->get($key));
-      }
-    }
+    $this->assertConfigDataEquals($data);
   }
 
   /**
@@ -152,71 +143,64 @@ class ConfigTest extends UnitTestCase {
     $this->assertInstanceOf('\Drupal\Core\Config\Config', $config);
 
     // Check that the original data it saved.
-    if (is_array($value)) {
-      // Check each nested value.
-      foreach($value as $nestedKey => $nestedValue) {
-        $this->assertEquals($nestedValue, $this->config->getOriginal($key . '.' . $nestedKey));
-      }
-    }
-    else {
-      // Check single value.
-      $this->assertEquals($value, $this->config->getOriginal($key));
-    }
+    $this->assertOriginalConfigDataEquals($data);
   }
 
   /**
    * Check that overrides are returned by get method and original data is maintained.
+   *
+   * @dataProvider overrideDataProvider
    */
-  public function testOverrideData() {
+  public function testOverrideData($data, $moduleData, $settingData) {
     // Set initial data.
-    $this->config->setData(array('a' => 1));
+    $this->config->setData($data);
 
     // Check original data was set correctly.
-    $this->assertEquals($this->config->get('a'), 1);
+    $this->assertConfigDataEquals($data);
 
     // Save so that the original data is stored.
     $this->config->save();
 
     // Set module override data and check value before and after save.
-    $this->config->setModuleOverride(array('a' => 3));
-    $this->assertEquals($this->config->get('a'), 3);
+    $this->config->setModuleOverride($moduleData);
+    $this->assertConfigDataEquals($moduleData);
     $this->config->save();
-    $this->assertEquals($this->config->get('a'), 3);
+    $this->assertConfigDataEquals($moduleData);
 
-    // Set settings override data and check value before and after save.
-    $this->config->setSettingsOverride(array('a' => 4));
-    $this->assertEquals($this->config->get('a'), 4);
+    // Set setting override data and check value before and after save.
+    $this->config->setSettingsOverride($settingData);
+    $this->assertConfigDataEquals($settingData);
     $this->config->save();
-    $this->assertEquals($this->config->get('a'), 4);
+    $this->assertConfigDataEquals($settingData);
 
-    // Set module again to ensure override order is correct.
-    $this->config->setModuleOverride(array('a' => 3));
+    // Set module overrides again to ensure override order is correct.
+    $this->config->setModuleOverride($moduleData);
 
-    // 'a' should still be '4' after setting module overrides.
-    $this->assertEquals($this->config->get('a'), 4);
+    // setting data should be overriding module data.
+    $this->assertConfigDataEquals($settingData);
     $this->config->save();
-    $this->assertEquals($this->config->get('a'), 4);
+    $this->assertConfigDataEquals($settingData);
 
     // Check original data has not changed.
-    $this->assertEquals($this->config->getOriginal('a', FALSE), 1);
+    $this->assertOriginalConfigDataEquals($data, FALSE);
 
-    // Check correct override value '4' is returned with $apply_overrides = TRUE.
-    $this->assertEquals($this->config->getOriginal('a', TRUE), 4);
+    // Check setting overrides are returned with $apply_overrides = TRUE.
+    $this->assertOriginalConfigDataEquals($settingData, TRUE);
 
     // Check $apply_overrides defaults to TRUE.
-    $this->assertEquals($this->config->getOriginal('a'), 4);
+    $this->assertOriginalConfigDataEquals($settingData);
   }
 
   /**
    * Check that data is set correctly.
    *
-   * @dataProvider basicDataProvider
+   * @dataProvider structuredDataProvider
    */
   public function testSetValue($data) {
     foreach ($data as $key => $value) {
       $this->config->set($key, $value);
-      $this->assertEquals($value, $this->config->get($key));
     }
+    $this->assertConfigDataEquals($data);
   }
 
   /**
@@ -226,10 +210,10 @@ class ConfigTest extends UnitTestCase {
    */
   public function testSetIllegalOffsetValue() {
     // Set a single value.
-    $this->config->set('testData', 'testDataValue');
+    $this->config->set('testData', 1);
 
     // Attempt to treat the single value as a nested item.
-    $this->config->set('testData.illegalOffset', 'testDataValue');
+    $this->config->set('testData.illegalOffset', 1);
   }
 
   /**
@@ -246,12 +230,11 @@ class ConfigTest extends UnitTestCase {
     // Check config is not new.
     $this->assertEquals(FALSE, $this->config->isNew());
 
-    foreach ($data as $key => $value) {
-      // Check that data value was set correctly.
-      $this->assertEquals($value, $this->config->get($key));
-      // Check that original data was set.
-      $this->assertEquals($value, $this->config->getOriginal($key));
-    }
+    // Check that data value was set correctly.
+    $this->assertConfigDataEquals($data);
+
+    // Check that original data was set.
+    $this->assertOriginalConfigDataEquals($data);
   }
 
   /**
@@ -297,15 +280,12 @@ class ConfigTest extends UnitTestCase {
     // Save.
     $this->config->save();
 
-    // Check that values have been set correctly.
-    foreach ($data as $key => $value) {
-      $this->assertEquals($value, $this->config->getOriginal($key, FALSE));
-    }
+    // Check that original data is still correct.
+    $this->assertOriginalConfigDataEquals($data, FALSE);
+
     // Check overrides have been set.
-    foreach ($moduleData as $key => $value) {
-      $this->assertEquals($value, $this->config->get($key));
-      $this->assertEquals($value, $this->config->getOriginal($key, TRUE));
-    }
+    $this->assertConfigDataEquals($moduleData);
+    $this->assertOriginalConfigDataEquals($moduleData, TRUE);
 
     // Check that config is new.
     $this->assertFalse($this->config->isNew());
@@ -443,4 +423,52 @@ class ConfigTest extends UnitTestCase {
     );
   }
 
+  /**
+   * Asserts all config data equals $data provided.
+   */
+  public function assertConfigDataEquals($data) {
+    foreach ($data as $key => $value) {
+      if (is_array($value)) {
+        // Check each nested value.
+        foreach($value as $nestedKey => $nestedValue) {
+          $this->assertEquals($nestedValue, $this->config->get($key . '.' . $nestedKey));
+        }
+      }
+      else {
+        // Check single value.
+        $this->assertEquals($value, $this->config->get($key));
+      }
+    }
+  }
+
+  /**
+   * Asserts all original config data equals $data provided.
+   */
+  public function assertOriginalConfigDataEquals($data, $apply_overrides = null) {
+    foreach ($data as $key => $value) {
+      if (is_array($value)) {
+        // Check each nested value.
+        foreach($value as $nestedKey => $nestedValue) {
+          $fullNestedKey = $key . '.' . $nestedKey;
+          if (is_null($apply_overrides)) {
+            $configValue = $this->config->getOriginal($fullNestedKey);
+          }
+          else {
+            $configValue = $this->config->getOriginal($fullNestedKey, $apply_overrides);
+          }
+          $this->assertEquals($nestedValue, $configValue);
+        }
+      }
+      else {
+        // Check single value.
+        if (is_null($apply_overrides)) {
+          $configValue = $this->config->getOriginal($key);
+        }
+        else {
+          $configValue = $this->config->getOriginal($key, $apply_overrides);
+        }
+        $this->assertEquals($value, $configValue);
+      }
+    }
+  }
 }
