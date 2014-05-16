@@ -72,20 +72,29 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check that the config name is set correctly.
+   *
+   * @dataProvider setNameProvider
    */
-  public function testSetName() {
-    // Valid name with dot.
-    $testName = 'test.name';
-
-    // Set the name.
-    $this->config->setName($testName);
+  public function testSetName($name) {
+     // Set the name.
+    $this->config->setName($name);
 
     // Check that the name has been set correctly.
-    $this->assertEquals($testName, $this->config->getName());
+    $this->assertEquals($name, $this->config->getName());
 
     // Check that the name validates.
     // Should throw \Drupal\Core\Config\ConfigNameException if invalid.
-    $this->config->validateName($testName);
+    $this->config->validateName($name);
+  }
+
+  /**
+   * Provide config names to test.
+   */
+  public function setNameProvider() {
+    return array(
+      // Valid name with dot.
+      'test.name',
+    );
   }
 
   /**
@@ -102,24 +111,39 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check that data is set correctly.
+   *
+   * @dataProvider structuredDataProvider
    */
-  public function testSetData() {
-    $data = array('a' => 1, 'b' => 2, 'c' => array('d' => 3));
+  public function testSetData($data) {
     $this->config->setData($data);
     $this->assertEquals($data, $this->config->getRawData());
-    $this->assertEquals(1, $this->config->get('a'));
-    $this->assertEquals(3, $this->config->get('c.d'));
+    foreach ($data as $key => $value) {
+      if (is_array($value)) {
+        // Check each nested value.
+        foreach($value as $nestedKey => $nestedValue) {
+          $this->assertEquals($nestedValue, $this->config->get($key . '.' . $nestedKey));
+        }
+      }
+      else {
+        // Check single value.
+        $this->assertEquals($value, $this->config->get($key));
+      }
+    }
   }
 
   /**
    * Check that original data is set when config is saved.
+   *
+   * @dataProvider structuredDataProvider
    */
-  public function testSave() {
+  public function testSave($data) {
     // Set initial data.
-    $this->config->setData(array('a' => 'testVal'));
+    $this->config->setData($data);
 
     // Check that original data has not been set yet.
-    $this->assertNull($this->config->getOriginal('a', FALSE));
+    foreach ($data as $key => $value) {
+      $this->assertNull($this->config->getOriginal($key, FALSE));
+    }
 
     // Save so that the original data is set.
     $config = $this->config->save();
@@ -128,7 +152,16 @@ class ConfigTest extends UnitTestCase {
     $this->assertInstanceOf('\Drupal\Core\Config\Config', $config);
 
     // Check that the original data it saved.
-    $this->assertEquals($this->config->getOriginal('a', FALSE), 'testVal');
+    if (is_array($value)) {
+      // Check each nested value.
+      foreach($value as $nestedKey => $nestedValue) {
+        $this->assertEquals($nestedValue, $this->config->getOriginal($key . '.' . $nestedKey));
+      }
+    }
+    else {
+      // Check single value.
+      $this->assertEquals($value, $this->config->getOriginal($key));
+    }
   }
 
   /**
@@ -176,15 +209,14 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check that data is set correctly.
+   *
+   * @dataProvider basicDataProvider
    */
-  public function testSetValue() {
-    // Check single value.
-    $this->config->set('testData', 'testDataValue');
-    $this->assertEquals('testDataValue', $this->config->get('testData'));
-
-    // Check nested value.
-    $this->config->set('nested.testData', 'nestedDataValue');
-    $this->assertEquals('nestedDataValue', $this->config->get('nested.testData'));
+  public function testSetValue($data) {
+    foreach ($data as $key => $value) {
+      $this->config->set($key, $value);
+      $this->assertEquals($value, $this->config->get($key));
+    }
   }
 
   /**
@@ -221,36 +253,58 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check clear.
+   *
+   * @dataProvider structuredDataProvider
    */
-  public function testClear() {
-    // Check that value is cleared.
-    $this->config->set('a', 'testVal');
-    $this->assertEquals('testVal', $this->config->get('a'));
-    $this->config->clear('a');
-    $this->assertNull($this->config->get('a'));
-
-    // Check that nested value is cleared.
-    $this->config->set('a', array('b' => 'testVal'));
-    $this->assertEquals('testVal', $this->config->get('a.b'));
-    $this->config->clear('a.b');
-    $this->assertNull($this->config->get('a.b'));
+  public function testClear($data) {
+    foreach ($data as $key => $value) {
+      // Check that values are cleared.
+      $this->config->set($key, $value);
+      if (is_array($value)) {
+        // Check each nested value.
+        foreach($value as $nestedKey => $nestedValue) {
+          $fullNestedKey = $key . '.' . $nestedKey;
+          $this->assertEquals($nestedValue, $this->config->get($fullNestedKey));
+          $this->config->clear($fullNestedKey);
+          $this->assertNull($this->config->get($fullNestedKey));
+        }
+      }
+      else {
+        // Check single values.
+        $this->assertEquals($value, $this->config->get($key));
+        $this->config->clear($key);
+        $this->assertNull($this->config->get($key));
+      }
+    }
   }
 
   /**
    * Check that config delete is working correctly.
+   *
+   * @dataProvider overrideDataProvider
    */
-  public function testDelete() {
+  public function testDelete($data, $moduleData) {
     // Set initial data.
-    $this->config->set('a', 'testVal');
-    $this->config->setModuleOverride(array('a' => 'overrideVal'));
+    foreach ($data as $key => $value) {
+      $this->config->set($key, $value);
+    }
+    // Set overrides.
+    $this->config->setModuleOverride($moduleData);
 
     // Save.
     $this->config->save();
 
     // Check that values have been set correctly.
-    $this->assertEquals('overrideVal', $this->config->get('a'));
-    $this->assertEquals('overrideVal', $this->config->getOriginal('a', TRUE));
-    $this->assertEquals('testVal', $this->config->getOriginal('a', FALSE));
+    foreach ($data as $key => $value) {
+      $this->assertEquals($value, $this->config->getOriginal($key, FALSE));
+    }
+    // Check overrides have been set.
+    foreach ($moduleData as $key => $value) {
+      $this->assertEquals($value, $this->config->get($key));
+      $this->assertEquals($value, $this->config->getOriginal($key, TRUE));
+    }
+
+    // Check that config is new.
     $this->assertFalse($this->config->isNew());
 
     // Delete.
@@ -258,26 +312,48 @@ class ConfigTest extends UnitTestCase {
 
     // Check object properties have been reset.
     $this->assertTrue($this->config->isNew());
-    $this->assertEmpty($this->config->get('a'));
-    $this->assertEmpty($this->config->getOriginal('a', TRUE));
-    $this->assertEmpty($this->config->getOriginal('a', FALSE));
+    foreach ($data as $key => $value) {
+      $this->assertEmpty($this->config->get($key));
+      $this->assertEmpty($this->config->getOriginal($key, FALSE));
+    }
+
+    // Check that overrides have been reset.
+    foreach ($moduleData as $key => $value) {
+      $this->assertEmpty($this->config->get($key));
+      $this->assertEmpty($this->config->getOriginal($key, TRUE));
+    }
   }
 
   /**
    * Check that data merges correctly.
+   *
+   * @dataProvider mergeDataProvider
    */
-  public function testMerge() {
+  public function testMerge($data, $dataToMerge, $mergedData) {
     // Set initial data.
-    $data = array('a' => 1, 'b' => 2, 'c' => array('d' => 3));
     $this->config->setData($data);
 
     // Data to merge.
-    $dataToMerge = array('a' => 2, 'e' => 4, 'c' => array('f' => 5));
     $this->config->merge($dataToMerge);
 
     // Check that data has merged correctly.
-    $mergedData = array('a' => 2, 'b' => 2, 'c' => array('d' => 3, 'f' => 5), 'e' => 4);
     $this->assertEquals($mergedData, $this->config->getRawData());
+  }
+
+  /**
+   * Provides data to test merges.
+   */
+  public function mergeDataProvider() {
+    return array(
+      array(
+        // Data.
+        array('a' => 1, 'b' => 2, 'c' => array('d' => 3)),
+        // Data to merge.
+        array('a' => 2, 'e' => 4, 'c' => array('f' => 5)),
+        // Data merged.
+        array('a' => 2, 'b' => 2, 'c' => array('d' => 3, 'f' => 5), 'e' => 4),
+      )
+    );
   }
 
   /**
@@ -324,4 +400,44 @@ class ConfigTest extends UnitTestCase {
     }
     return $return;
   }
+
+  /**
+   * Override data provider.
+   */
+  public function overrideDataProvider() {
+    return array(
+      array(
+        // Original data.
+        array(
+          'a' => 'originalValue'
+        ),
+        // Module overrides.
+        array(
+          'a' => 'moduleValue'
+        ),
+        // Setting overrides.
+        array(
+          'a' => 'settingValue'
+        ),
+      )
+    );
+  }
+
+  /**
+   * Provides structured test data.
+   */
+  public function structuredDataProvider() {
+    return array(
+      array(
+        array(
+          'a' => 1,
+          'b' => 'testValue',
+          'c' => array(
+            'd' => 2
+          )
+        ),
+      ),
+    );
+  }
+
 }
