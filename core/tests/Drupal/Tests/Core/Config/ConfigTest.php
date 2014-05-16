@@ -234,9 +234,11 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check that config can be initialized with data.
+   *
+   * @dataProvider structuredDataProvider
    */
-  public function testInitWithData() {
-    $config = $this->config->initWithData(array('a' => 'b'));
+  public function testInitWithData($data) {
+    $config = $this->config->initWithData($data);
 
     // Should return the Config object.
     $this->assertInstanceOf('\Drupal\Core\Config\Config', $config);
@@ -244,11 +246,12 @@ class ConfigTest extends UnitTestCase {
     // Check config is not new.
     $this->assertEquals(FALSE, $this->config->isNew());
 
-    // Check that data value was set correctly.
-    $this->assertEquals('b', $this->config->get('a'));
-
-    // Check that original data was set.
-    $this->assertEquals('b', $this->config->getOriginal('a'));
+    foreach ($data as $key => $value) {
+      // Check that data value was set correctly.
+      $this->assertEquals($value, $this->config->get($key));
+      // Check that original data was set.
+      $this->assertEquals($value, $this->config->getOriginal($key));
+    }
   }
 
   /**
