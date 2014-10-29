@@ -296,14 +296,13 @@ class ConfigTest extends UnitTestCase {
     // Check object properties have been reset.
     $this->assertTrue($this->config->isNew());
     foreach ($data as $key => $value) {
-      $this->assertEmpty($this->config->get($key));
       $this->assertEmpty($this->config->getOriginal($key, FALSE));
     }
 
-    // Check that overrides have been reset.
+    // Check that overrides have persisted.
     foreach ($moduleData as $key => $value) {
-      $this->assertEmpty($this->config->get($key));
-      $this->assertEmpty($this->config->getOriginal($key, TRUE));
+      $this->assertConfigDataEquals($moduleData);
+      $this->assertOriginalConfigDataEquals($moduleData, TRUE);
     }
   }
 
