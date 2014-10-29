@@ -149,6 +149,8 @@ class ConfigTest extends UnitTestCase {
    * @covers ::setModuleOverride
    * @covers ::setSettingsOverride
    * @covers ::save
+   * @covers ::get
+   * @covers ::getOriginal
    * @dataProvider overrideDataProvider
    */
   public function testOverrideData($data, $moduleData, $settingData) {
