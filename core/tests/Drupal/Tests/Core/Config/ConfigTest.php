@@ -62,7 +62,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that the config name is set correctly.
+   * Checks that the config name is set correctly.
    *
    * @covers ::setName
    * @dataProvider setNameProvider
@@ -80,7 +80,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Provide config names to test.
+   * Provides config names to test.
    */
   public function setNameProvider() {
     return array(
@@ -92,7 +92,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that isNew is set correctly.
+   * Checks that isNew is set correctly.
    *
    * @covers ::isNew
    */
@@ -106,7 +106,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that data is set correctly.
+   * Checks that data is set correctly.
    *
    * @covers ::setData
    * @dataProvider structuredDataProvider
@@ -118,7 +118,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that original data is set when config is saved.
+   * Checks that original data is set when config is saved.
    *
    * @covers ::save
    * @dataProvider structuredDataProvider
@@ -143,7 +143,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that overrides are returned by get method and original data is maintained.
+   * Checks that overrides are returned by get method and original data is maintained.
    *
    * @covers ::setData
    * @covers ::setModuleOverride
@@ -192,7 +192,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that data is set correctly.
+   * Checks that data is set correctly.
    *
    * @covers ::set
    * @dataProvider structuredDataProvider
@@ -205,7 +205,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that single value cannot be overwritten with a nested value.
+   * Checks that single value cannot be overwritten with a nested value.
    *
    * @covers ::set
    * @expectedException PHPUnit_Framework_Error_Warning
@@ -219,7 +219,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that config can be initialized with data.
+   * Checks that config can be initialized with data.
    *
    * @covers ::initWithData
    * @dataProvider structuredDataProvider
@@ -241,7 +241,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check clear.
+   * Checks clear.
    *
    * @covers ::clear
    * @dataProvider structuredDataProvider
@@ -269,7 +269,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that config delete is working correctly.
+   * Checks that config delete is working correctly.
    *
    * @covers ::delete
    * @dataProvider overrideDataProvider
@@ -312,7 +312,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Check that data merges correctly.
+   * Checks that data merges correctly.
    *
    * @covers ::merge
    * @dataProvider mergeDataProvider
@@ -391,7 +391,7 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Override data provider.
+   * Provides override data.
    */
   public function overrideDataProvider() {
     return array(
