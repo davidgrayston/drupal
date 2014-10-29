@@ -477,16 +477,7 @@ class ConfigTest extends UnitTestCase {
    */
   public function assertConfigDataEquals($data) {
     foreach ($data as $key => $value) {
-      if (is_array($value)) {
-        // Check each nested value.
-        foreach($value as $nestedKey => $nestedValue) {
-          $this->assertEquals($nestedValue, $this->config->get($key . '.' . $nestedKey));
-        }
-      }
-      else {
-        // Check single value.
-        $this->assertEquals($value, $this->config->get($key));
-      }
+      $this->assertEquals($value, $this->config->get($key));
     }
   }
 
@@ -495,29 +486,13 @@ class ConfigTest extends UnitTestCase {
    */
   public function assertOriginalConfigDataEquals($data, $apply_overrides = null) {
     foreach ($data as $key => $value) {
-      if (is_array($value)) {
-        // Check each nested value.
-        foreach($value as $nestedKey => $nestedValue) {
-          $fullNestedKey = $key . '.' . $nestedKey;
-          if (is_null($apply_overrides)) {
-            $configValue = $this->config->getOriginal($fullNestedKey);
-          }
-          else {
-            $configValue = $this->config->getOriginal($fullNestedKey, $apply_overrides);
-          }
-          $this->assertEquals($nestedValue, $configValue);
-        }
+      if (is_null($apply_overrides)) {
+        $configValue = $this->config->getOriginal($key);
       }
       else {
-        // Check single value.
-        if (is_null($apply_overrides)) {
-          $configValue = $this->config->getOriginal($key);
-        }
-        else {
-          $configValue = $this->config->getOriginal($key, $apply_overrides);
-        }
-        $this->assertEquals($value, $configValue);
+        $configValue = $this->config->getOriginal($key, $apply_overrides);
       }
+      $this->assertEquals($value, $configValue);
     }
   }
 }
