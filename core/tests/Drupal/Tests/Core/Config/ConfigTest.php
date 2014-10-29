@@ -52,17 +52,6 @@ class ConfigTest extends UnitTestCase {
   protected $typed_config;
 
   /**
-   * Test Info.
-   */
-  public static function getInfo() {
-    return array(
-      'name' => 'Config test',
-      'description' => 'Tests Config.',
-      'group' => 'Configuration'
-    );
-  }
-
-  /**
    * Setup.
    */
   public function setUp() {
