@@ -113,7 +113,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that data is set correctly.
    *
    * @covers ::setData
-   * @dataProvider structuredDataProvider
+   * @dataProvider nestedDataProvider
    */
   public function testSetData($data) {
     $this->config->setData($data);
@@ -125,7 +125,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that original data is set when config is saved.
    *
    * @covers ::save
-   * @dataProvider structuredDataProvider
+   * @dataProvider nestedDataProvider
    */
   public function testSave($data) {
     // Set initial data.
@@ -201,7 +201,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that data is set correctly.
    *
    * @covers ::set
-   * @dataProvider structuredDataProvider
+   * @dataProvider nestedDataProvider
    */
   public function testSetValue($data) {
     foreach ($data as $key => $value) {
@@ -211,7 +211,17 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that single value cannot be overwritten with a nested value.
+   * Checks that exception is thrown if key in value contains a dot.
+   *
+   * @covers ::set
+   * @expectedException \Drupal\Core\Config\ConfigValueException
+   */
+  public function testSetValidation() {
+    $this->config->set('testData', array('dot.key' => 1));
+  }
+
+  /**
+   * Checks that a single value cannot be overwritten with a nested value.
    *
    * @covers ::set
    * @expectedException PHPUnit_Framework_Error_Warning
@@ -228,7 +238,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that config can be initialized with data.
    *
    * @covers ::initWithData
-   * @dataProvider structuredDataProvider
+   * @dataProvider nestedDataProvider
    */
   public function testInitWithData($data) {
     $config = $this->config->initWithData($data);
@@ -250,26 +260,34 @@ class ConfigTest extends UnitTestCase {
    * Checks clear.
    *
    * @covers ::clear
-   * @dataProvider structuredDataProvider
+   * @dataProvider simpleDataProvider
    */
   public function testClear($data) {
     foreach ($data as $key => $value) {
       // Check that values are cleared.
       $this->config->set($key, $value);
-      if (is_array($value)) {
-        // Check each nested value.
-        foreach($value as $nestedKey => $nestedValue) {
-          $fullNestedKey = $key . '.' . $nestedKey;
-          $this->assertEquals($nestedValue, $this->config->get($fullNestedKey));
-          $this->config->clear($fullNestedKey);
-          $this->assertNull($this->config->get($fullNestedKey));
-        }
-      }
-      else {
-        // Check single values.
-        $this->assertEquals($value, $this->config->get($key));
-        $this->config->clear($key);
-        $this->assertNull($this->config->get($key));
+      $this->assertEquals($value, $this->config->get($key));
+      $this->config->clear($key);
+      $this->assertNull($this->config->get($key));
+    }
+  }
+
+  /**
+   * Checks clearing of nested data.
+   *
+   * @covers ::clear
+   * @dataProvider nestedDataProvider
+   */
+  public function testNestedClear($data) {
+    foreach ($data as $key => $value) {
+      // Check that values are cleared.
+      $this->config->set($key, $value);
+      // Check each nested value.
+      foreach($value as $nestedKey => $nestedValue) {
+        $fullNestedKey = $key . '.' . $nestedKey;
+        $this->assertEquals($nestedValue, $this->config->get($fullNestedKey));
+        $this->config->clear($fullNestedKey);
+        $this->assertNull($this->config->get($fullNestedKey));
       }
     }
   }
@@ -419,16 +437,35 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Provides structured test data.
+   * Provides simple test data.
    */
-  public function structuredDataProvider() {
+  public function simpleDataProvider() {
     return array(
       array(
         array(
-          'a' => 1,
-          'b' => 'testValue',
+          'a' => '1',
+          'b' => '2',
+          'c' => '3',
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Provides nested test data.
+   */
+  public function nestedDataProvider() {
+    return array(
+      array(
+        array(
+          'a' => array(
+            'd' => 1
+          ),
+          'b' => array(
+            'e' => 2
+          ),
           'c' => array(
-            'd' => 2
+            'f' => 3
           )
         ),
       ),
