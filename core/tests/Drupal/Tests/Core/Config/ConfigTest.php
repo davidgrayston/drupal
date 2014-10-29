@@ -14,6 +14,8 @@ use Drupal\Component\Utility\String;
 /**
  * Tests the Config.
  *
+ * @coversDefaultClass \Drupal\Tests\Core\Config
+ *
  * @group Drupal
  * @group Config
  *
@@ -73,6 +75,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that the config name is set correctly.
    *
+   * @covers ::setName
    * @dataProvider setNameProvider
    */
   public function testSetName($name) {
@@ -101,6 +104,8 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Check that isNew is set correctly.
+   *
+   * @covers ::isNew
    */
   public function testIsNew() {
     // Config should be new by default.
@@ -114,6 +119,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that data is set correctly.
    *
+   * @covers ::setData
    * @dataProvider structuredDataProvider
    */
   public function testSetData($data) {
@@ -125,6 +131,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that original data is set when config is saved.
    *
+   * @covers ::save
    * @dataProvider structuredDataProvider
    */
   public function testSave($data) {
@@ -149,6 +156,10 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that overrides are returned by get method and original data is maintained.
    *
+   * @covers ::setData
+   * @covers ::setModuleOverride
+   * @covers ::setSettingsOverride
+   * @covers ::save
    * @dataProvider overrideDataProvider
    */
   public function testOverrideData($data, $moduleData, $settingData) {
@@ -194,6 +205,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that data is set correctly.
    *
+   * @covers ::set
    * @dataProvider structuredDataProvider
    */
   public function testSetValue($data) {
@@ -206,6 +218,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that single value cannot be overwritten with a nested value.
    *
+   * @covers ::set
    * @expectedException PHPUnit_Framework_Error_Warning
    */
   public function testSetIllegalOffsetValue() {
@@ -219,6 +232,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that config can be initialized with data.
    *
+   * @covers ::initWithData
    * @dataProvider structuredDataProvider
    */
   public function testInitWithData($data) {
@@ -240,6 +254,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check clear.
    *
+   * @covers ::clear
    * @dataProvider structuredDataProvider
    */
   public function testClear($data) {
@@ -267,6 +282,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that config delete is working correctly.
    *
+   * @covers ::delete
    * @dataProvider overrideDataProvider
    */
   public function testDelete($data, $moduleData) {
@@ -309,6 +325,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Check that data merges correctly.
    *
+   * @covers ::merge
    * @dataProvider mergeDataProvider
    */
   public function testMerge($data, $dataToMerge, $mergedData) {
@@ -341,6 +358,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Checks that name validation exception are thrown.
    *
+   * @covers ::validateName
    * @expectedException \Drupal\Core\Config\ConfigNameException
    * @dataProvider validateNameProvider
    */
