@@ -14,7 +14,7 @@ use Drupal\Component\Utility\String;
 /**
  * Tests the Config.
  *
- * @coversDefaultClass \Drupal\Tests\Core\Config
+ * @coversDefaultClass \Drupal\Core\Config\Config
  *
  * @group Drupal
  * @group Config
