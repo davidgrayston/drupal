@@ -143,7 +143,7 @@ class ConfigTest extends UnitTestCase {
     $this->assertInstanceOf('\Drupal\Core\Config\Config', $config);
 
     // Check that the original data it saved.
-    $this->assertOriginalConfigDataEquals($data);
+    $this->assertOriginalConfigDataEquals($data, NULL);
   }
 
   /**
@@ -194,7 +194,7 @@ class ConfigTest extends UnitTestCase {
     $this->assertOriginalConfigDataEquals($settingData, TRUE);
 
     // Check $apply_overrides defaults to TRUE.
-    $this->assertOriginalConfigDataEquals($settingData);
+    $this->assertOriginalConfigDataEquals($settingData, NULL);
   }
 
   /**
@@ -253,7 +253,7 @@ class ConfigTest extends UnitTestCase {
     $this->assertConfigDataEquals($data);
 
     // Check that original data was set.
-    $this->assertOriginalConfigDataEquals($data);
+    $this->assertOriginalConfigDataEquals($data, NULL);
   }
 
   /**
@@ -484,7 +484,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Asserts all original config data equals $data provided.
    */
-  public function assertOriginalConfigDataEquals($data, $apply_overrides = null) {
+  public function assertOriginalConfigDataEquals($data, $apply_overrides) {
     foreach ($data as $key => $value) {
       if (is_null($apply_overrides)) {
         $configValue = $this->config->getOriginal($key);
