@@ -240,8 +240,6 @@ class Config extends StorableConfigBase {
     $this->data = array();
     $this->storage->delete($this->name);
     $this->isNew = TRUE;
-    $this->settingsOverrides = array();
-    $this->moduleOverrides = array();
     $this->resetOverriddenData();
     $this->eventDispatcher->dispatch(ConfigEvents::DELETE, new ConfigCrudEvent($this));
     $this->originalData = $this->data;
