@@ -84,9 +84,13 @@ class ConfigTest extends UnitTestCase {
    */
   public function setNameProvider() {
     return array(
+      // Valid name with dot.
       array(
-        // Valid name with dot.
         'test.name',
+      ),
+      // Maximum length.
+      array(
+        'test.' . str_repeat('a', Config::MAX_NAME_LENGTH - 5),
       ),
     );
   }
