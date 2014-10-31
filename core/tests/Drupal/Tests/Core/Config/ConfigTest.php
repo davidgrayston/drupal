@@ -187,6 +187,12 @@ class ConfigTest extends UnitTestCase {
 
     // Check setting overrides are returned with $apply_overrides = TRUE.
     $this->assertOriginalConfigDataEquals($settingData, TRUE);
+
+    // Check that $apply_overrides defaults to TRUE.
+    foreach ($settingData as $key => $value) {
+      $configValue = $this->config->getOriginal($key);
+      $this->assertEquals($value, $configValue);
+    }
   }
 
   /**
@@ -486,19 +492,8 @@ class ConfigTest extends UnitTestCase {
    */
   public function assertOriginalConfigDataEquals($data, $apply_overrides) {
     foreach ($data as $key => $value) {
-      if ($apply_overrides === TRUE) {
-        // Check with overrides applied.
-        $configValue = $this->config->getOriginal($key, TRUE);
-        $this->assertEquals($value, $configValue);
-        // Also check that $apply_overrides defaults to TRUE.
-        $configValue = $this->config->getOriginal($key);
-        $this->assertEquals($value, $configValue);
-      }
-      else {
-        // Check without overrides applied.
-        $configValue = $this->config->getOriginal($key, FALSE);
-        $this->assertEquals($value, $configValue);
-      }
+      $configValue = $this->config->getOriginal($key, $apply_overrides);
+      $this->assertEquals($value, $configValue);
     }
   }
 }
