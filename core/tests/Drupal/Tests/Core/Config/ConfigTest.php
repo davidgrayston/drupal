@@ -247,7 +247,7 @@ class ConfigTest extends UnitTestCase {
     // Check that original data was set.
     $this->assertOriginalConfigDataEquals($data, TRUE);
 
-    // Check that no overrides have been applied.
+    // Check without applying overrides.
     $this->assertOriginalConfigDataEquals($data, FALSE);
   }
 
