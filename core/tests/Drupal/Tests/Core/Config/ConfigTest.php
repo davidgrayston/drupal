@@ -143,18 +143,14 @@ class ConfigTest extends UnitTestCase {
     $this->assertInstanceOf('\Drupal\Core\Config\Config', $config);
 
     // Check that the original data it saved.
-    $this->assertOriginalConfigDataEquals($data, NULL);
+    $this->assertOriginalConfigDataEquals($data, TRUE);
   }
 
   /**
    * Checks that overrides are returned by get method and original data is maintained.
    *
-   * @covers ::setData
    * @covers ::setModuleOverride
    * @covers ::setSettingsOverride
-   * @covers ::save
-   * @covers ::get
-   * @covers ::getOriginal
    * @dataProvider overrideDataProvider
    */
   public function testOverrideData($data, $moduleData, $settingData) {
@@ -192,9 +188,6 @@ class ConfigTest extends UnitTestCase {
 
     // Check setting overrides are returned with $apply_overrides = TRUE.
     $this->assertOriginalConfigDataEquals($settingData, TRUE);
-
-    // Check $apply_overrides defaults to TRUE.
-    $this->assertOriginalConfigDataEquals($settingData, NULL);
   }
 
   /**
@@ -253,7 +246,10 @@ class ConfigTest extends UnitTestCase {
     $this->assertConfigDataEquals($data);
 
     // Check that original data was set.
-    $this->assertOriginalConfigDataEquals($data, NULL);
+    $this->assertOriginalConfigDataEquals($data, TRUE);
+
+    // Check that no overrides have been applied.
+    $this->assertOriginalConfigDataEquals($data, FALSE);
   }
 
   /**
@@ -474,6 +470,8 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Asserts all config data equals $data provided.
+   *
+   * @param array $data
    */
   public function assertConfigDataEquals($data) {
     foreach ($data as $key => $value) {
@@ -483,16 +481,25 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * Asserts all original config data equals $data provided.
+   *
+   * @param array $data
+   * @param bool $apply_overrides
    */
   public function assertOriginalConfigDataEquals($data, $apply_overrides) {
     foreach ($data as $key => $value) {
-      if (is_null($apply_overrides)) {
+      if ($apply_overrides === TRUE) {
+        // Check with overrides applied.
+        $configValue = $this->config->getOriginal($key, TRUE);
+        $this->assertEquals($value, $configValue);
+        // Also check that $apply_overrides defaults to TRUE.
         $configValue = $this->config->getOriginal($key);
+        $this->assertEquals($value, $configValue);
       }
       else {
-        $configValue = $this->config->getOriginal($key, $apply_overrides);
+        // Check without overrides applied.
+        $configValue = $this->config->getOriginal($key, FALSE);
+        $this->assertEquals($value, $configValue);
       }
-      $this->assertEquals($value, $configValue);
     }
   }
 }
