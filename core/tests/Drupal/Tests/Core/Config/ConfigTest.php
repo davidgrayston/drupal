@@ -16,7 +16,6 @@ use Drupal\Component\Utility\String;
  *
  * @coversDefaultClass \Drupal\Core\Config\Config
  *
- * @group Drupal
  * @group Config
  *
  * @see \Drupal\Core\Config\Config
