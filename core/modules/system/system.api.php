@@ -84,21 +84,6 @@ function hook_queue_info_alter(&$queues) {
 }
 
 /**
- * Alter the Ajax command data that is sent to the client.
- *
- * @param \Drupal\Core\Ajax\CommandInterface[] $data
- *   An array of all the rendered commands that will be sent to the client.
- *
- * @see \Drupal\Core\Ajax\AjaxResponse::ajaxRender()
- */
-function hook_ajax_render_alter(array &$data) {
-  // Inject any new status messages into the content area.
-  $status_messages = array('#theme' => 'status_messages');
-  $command = new \Drupal\Core\Ajax\PrependCommand('#block-system-main .content', drupal_render($status_messages));
-  $data[] = $command->render();
-}
-
-/**
  * Alters all the menu links discovered by the menu link plugin manager.
  *
  * @param array $links
@@ -308,141 +293,6 @@ function hook_contextual_links_alter(array &$links, $group, array $route_paramet
  */
 function hook_contextual_links_plugins_alter(array &$contextual_links) {
   $contextual_links['menu_edit']['title'] = 'Edit the menu';
-}
-
-/**
- * Perform alterations before a form is rendered.
- *
- * One popular use of this hook is to add form elements to the node form. When
- * altering a node form, the node entity can be retrieved by invoking
- * $form_state->getFormObject()->getEntity().
- *
- * In addition to hook_form_alter(), which is called for all forms, there are
- * two more specific form hooks available. The first,
- * hook_form_BASE_FORM_ID_alter(), allows targeting of a form/forms via a base
- * form (if one exists). The second, hook_form_FORM_ID_alter(), can be used to
- * target a specific form directly.
- *
- * The call order is as follows: all existing form alter functions are called
- * for module A, then all for module B, etc., followed by all for any base
- * theme(s), and finally for the theme itself. The module order is determined
- * by system weight, then by module name.
- *
- * Within each module, form alter hooks are called in the following order:
- * first, hook_form_alter(); second, hook_form_BASE_FORM_ID_alter(); third,
- * hook_form_FORM_ID_alter(). So, for each module, the more general hooks are
- * called first followed by the more specific.
- *
- * @param $form
- *   Nested array of form elements that comprise the form.
- * @param $form_state
- *   The current state of the form. The arguments that
- *   \Drupal::formBuilder()->getForm() was originally called with are available
- *   in the array $form_state->getBuildInfo()['args'].
- * @param $form_id
- *   String representing the name of the form itself. Typically this is the
- *   name of the function that generated the form.
- *
- * @see hook_form_BASE_FORM_ID_alter()
- * @see hook_form_FORM_ID_alter()
- * @see forms_api_reference.html
- */
-function hook_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
-  if (isset($form['type']) && $form['type']['#value'] . '_node_settings' == $form_id) {
-    $upload_enabled_types = \Drupal::config('mymodule.settings')->get('upload_enabled_types');
-    $form['workflow']['upload_' . $form['type']['#value']] = array(
-      '#type' => 'radios',
-      '#title' => t('Attachments'),
-      '#default_value' => in_array($form['type']['#value'], $upload_enabled_types) ? 1 : 0,
-      '#options' => array(t('Disabled'), t('Enabled')),
-    );
-    // Add a custom submit handler to save the array of types back to the config file.
-    $form['actions']['submit']['#submit'][] = 'mymodule_upload_enabled_types_submit';
-  }
-}
-
-/**
- * Provide a form-specific alteration instead of the global hook_form_alter().
- *
- * Modules can implement hook_form_FORM_ID_alter() to modify a specific form,
- * rather than implementing hook_form_alter() and checking the form ID, or
- * using long switch statements to alter multiple forms.
- *
- * Form alter hooks are called in the following order: hook_form_alter(),
- * hook_form_BASE_FORM_ID_alter(), hook_form_FORM_ID_alter(). See
- * hook_form_alter() for more details.
- *
- * @param $form
- *   Nested array of form elements that comprise the form.
- * @param $form_state
- *   The current state of the form. The arguments that
- *   \Drupal::formBuilder()->getForm() was originally called with are available
- *   in the array $form_state->getBuildInfo()['args'].
- * @param $form_id
- *   String representing the name of the form itself. Typically this is the
- *   name of the function that generated the form.
- *
- * @see hook_form_alter()
- * @see hook_form_BASE_FORM_ID_alter()
- * @see \Drupal\Core\Form\FormBuilderInterface::prepareForm()
- * @see forms_api_reference.html
- */
-function hook_form_FORM_ID_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
-  // Modification for the form with the given form ID goes here. For example, if
-  // FORM_ID is "user_register_form" this code would run only on the user
-  // registration form.
-
-  // Add a checkbox to registration form about agreeing to terms of use.
-  $form['terms_of_use'] = array(
-    '#type' => 'checkbox',
-    '#title' => t("I agree with the website's terms and conditions."),
-    '#required' => TRUE,
-  );
-}
-
-/**
- * Provide a form-specific alteration for shared ('base') forms.
- *
- * By default, when \Drupal::formBuilder()->getForm() is called, Drupal looks
- * for a function with the same name as the form ID, and uses that function to
- * build the form. In contrast, base forms allow multiple form IDs to be mapped
- * to a single base (also called 'factory') form function.
- *
- * Modules can implement hook_form_BASE_FORM_ID_alter() to modify a specific
- * base form, rather than implementing hook_form_alter() and checking for
- * conditions that would identify the shared form constructor.
- *
- * To identify the base form ID for a particular form (or to determine whether
- * one exists) check the $form_state. The base form ID is stored under
- * $form_state->getBuildInfo()['base_form_id'].
- *
- * Form alter hooks are called in the following order: hook_form_alter(),
- * hook_form_BASE_FORM_ID_alter(), hook_form_FORM_ID_alter(). See
- * hook_form_alter() for more details.
- *
- * @param $form
- *   Nested array of form elements that comprise the form.
- * @param $form_state
- *   The current state of the form.
- * @param $form_id
- *   String representing the name of the form itself. Typically this is the
- *   name of the function that generated the form.
- *
- * @see hook_form_alter()
- * @see hook_form_FORM_ID_alter()
- * @see \Drupal\Core\Form\FormBuilderInterface::prepareForm()
- */
-function hook_form_BASE_FORM_ID_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
-  // Modification for the form with the given BASE_FORM_ID goes here. For
-  // example, if BASE_FORM_ID is "node_form", this code would run on every
-  // node form, regardless of node type.
-
-  // Add a checkbox to the node form about agreeing to terms of use.
-  $form['terms_of_use'] = array(
-    '#type' => 'checkbox',
-    '#title' => t("I agree with the website's terms and conditions."),
-    '#required' => TRUE,
-  );
 }
 
 /**
@@ -684,106 +534,6 @@ function hook_rebuild() {
 }
 
 /**
- * Alters the list of PHP stream wrapper implementations.
- *
- * @see file_get_stream_wrappers()
- * @see \Drupal\Core\StreamWrapper\StreamWrapperManager
- */
-function hook_stream_wrappers_alter(&$wrappers) {
-  // Change the name of private files to reflect the performance.
-  $wrappers['private']['name'] = t('Slow files');
-}
-
-/**
- * Control access to private file downloads and specify HTTP headers.
- *
- * This hook allows modules to enforce permissions on file downloads whenever
- * Drupal is handling file download, as opposed to the web server bypassing
- * Drupal and returning the file from a public directory. Modules can also
- * provide headers to specify information like the file's name or MIME type.
- *
- * @param $uri
- *   The URI of the file.
- * @return
- *   If the user does not have permission to access the file, return -1. If the
- *   user has permission, return an array with the appropriate headers. If the
- *   file is not controlled by the current module, the return value should be
- *   NULL.
- *
- * @see file_download()
- */
-function hook_file_download($uri) {
-  // Check to see if this is a config download.
-  $scheme = file_uri_scheme($uri);
-  $target = file_uri_target($uri);
-  if ($scheme == 'temporary' && $target == 'config.tar.gz') {
-    return array(
-      'Content-disposition' => 'attachment; filename="config.tar.gz"',
-    );
-  }
-}
-
-/**
- * Alter the URL to a file.
- *
- * This hook is called from file_create_url(), and  is called fairly
- * frequently (10+ times per page), depending on how many files there are in a
- * given page.
- * If CSS and JS aggregation are disabled, this can become very frequently
- * (50+ times per page) so performance is critical.
- *
- * This function should alter the URI, if it wants to rewrite the file URL.
- *
- * @param $uri
- *   The URI to a file for which we need an external URL, or the path to a
- *   shipped file.
- */
-function hook_file_url_alter(&$uri) {
-  $user = \Drupal::currentUser();
-
-  // User 1 will always see the local file in this example.
-  if ($user->id() == 1) {
-    return;
-  }
-
-  $cdn1 = 'http://cdn1.example.com';
-  $cdn2 = 'http://cdn2.example.com';
-  $cdn_extensions = array('css', 'js', 'gif', 'jpg', 'jpeg', 'png');
-
-  // Most CDNs don't support private file transfers without a lot of hassle,
-  // so don't support this in the common case.
-  $schemes = array('public');
-
-  $scheme = file_uri_scheme($uri);
-
-  // Only serve shipped files and public created files from the CDN.
-  if (!$scheme || in_array($scheme, $schemes)) {
-    // Shipped files.
-    if (!$scheme) {
-      $path = $uri;
-    }
-    // Public created files.
-    else {
-      $wrapper = file_stream_wrapper_get_instance_by_scheme($scheme);
-      $path = $wrapper->getDirectoryPath() . '/' . file_uri_target($uri);
-    }
-
-    // Clean up Windows paths.
-    $path = str_replace('\\', '/', $path);
-
-    // Serve files with one of the CDN extensions from CDN 1, all others from
-    // CDN 2.
-    $pathinfo = pathinfo($path);
-    if (isset($pathinfo['extension']) && in_array($pathinfo['extension'], $cdn_extensions)) {
-      $uri = $cdn1 . '/' . $path;
-    }
-    else {
-      $uri = $cdn2 . '/' . $path;
-    }
-  }
-}
-
-/**
  * Define the current version of the database schema.
  *
  * A Drupal schema definition is an array structure representing one or more
@@ -955,43 +705,6 @@ function hook_query_TAG_alter(Drupal\Core\Database\Query\AlterableInterface $que
       $query->condition($access_alias . 'grant_' . $op, 1, '>=');
     }
   }
-}
-
-/**
- * Alter MIME type mappings used to determine MIME type from a file extension.
- *
- * Invoked by \Drupal\Core\File\MimeType\ExtensionMimeTypeGuesser::guess(). It
- * is used to allow modules to add to or modify the default mapping from
- * \Drupal\Core\File\MimeType\ExtensionMimeTypeGuesser::$defaultMapping.
- *
- * @param $mapping
- *   An array of mimetypes correlated to the extensions that relate to them.
- *   The array has 'mimetypes' and 'extensions' elements, each of which is an
- *   array.
- *
- * @see \Drupal\Core\File\MimeType\ExtensionMimeTypeGuesser::guess()
- * @see \Drupal\Core\File\MimeType\ExtensionMimeTypeGuesser::$defaultMapping
- */
-function hook_file_mimetype_mapping_alter(&$mapping) {
-  // Add new MIME type 'drupal/info'.
-  $mapping['mimetypes']['example_info'] = 'drupal/info';
-  // Add new extension '.info.yml' and map it to the 'drupal/info' MIME type.
-  $mapping['extensions']['info'] = 'example_info';
-  // Override existing extension mapping for '.ogg' files.
-  $mapping['extensions']['ogg'] = 189;
-}
-
-/**
- * Alter archiver information declared by other modules.
- *
- * See hook_archiver_info() for a description of archivers and the archiver
- * information structure.
- *
- * @param $info
- *   Archiver information to alter (return values from hook_archiver_info()).
- */
-function hook_archiver_info_alter(&$info) {
-  $info['tar']['extensions'][] = 'tgz';
 }
 
 /**
@@ -1272,24 +985,6 @@ function hook_token_info_alter(&$data) {
 }
 
 /**
- * Alter batch information before a batch is processed.
- *
- * Called by batch_process() to allow modules to alter a batch before it is
- * processed.
- *
- * @param $batch
- *   The associative array of batch information. See batch_set() for details on
- *   what this could contain.
- *
- * @see batch_set()
- * @see batch_process()
- *
- * @ingroup batch
- */
-function hook_batch_alter(&$batch) {
-}
-
-/**
  * Alter the default country list.
  *
  * @param $countries
@@ -1300,66 +995,6 @@ function hook_batch_alter(&$batch) {
 function hook_countries_alter(&$countries) {
   // Elbonia is now independent, so add it to the country list.
   $countries['EB'] = 'Elbonia';
-}
-
-/**
- * Register information about FileTransfer classes provided by a module.
- *
- * The FileTransfer class allows transferring files over a specific type of
- * connection. Core provides classes for FTP and SSH. Contributed modules are
- * free to extend the FileTransfer base class to add other connection types,
- * and if these classes are registered via hook_filetransfer_info(), those
- * connection types will be available to site administrators using the Update
- * manager when they are redirected to the authorize.php script to authorize
- * the file operations.
- *
- * @return array
- *   Nested array of information about FileTransfer classes. Each key is a
- *   FileTransfer type (not human readable, used for form elements and
- *   variable names, etc), and the values are subarrays that define properties
- *   of that type. The keys in each subarray are:
- *   - 'title': Required. The human-readable name of the connection type.
- *   - 'class': Required. The name of the FileTransfer class. The constructor
- *     will always be passed the full path to the root of the site that should
- *     be used to restrict where file transfer operations can occur (the $jail)
- *     and an array of settings values returned by the settings form.
- *   - 'file': Required. The include file containing the FileTransfer class.
- *     This should be a separate .inc file, not just the .module file, so that
- *     the minimum possible code is loaded when authorize.php is running.
- *   - 'file path': Optional. The directory (relative to the Drupal root)
- *     where the include file lives. If not defined, defaults to the base
- *     directory of the module implementing the hook.
- *   - 'weight': Optional. Integer weight used for sorting connection types on
- *     the authorize.php form.
- *
- * @see \Drupal\Core\FileTransfer\FileTransfer
- * @see authorize.php
- * @see hook_filetransfer_info_alter()
- * @see drupal_get_filetransfer_info()
- */
-function hook_filetransfer_info() {
-  $info['sftp'] = array(
-    'title' => t('SFTP (Secure FTP)'),
-    'class' => 'Drupal\Core\FileTransfer\SFTP',
-    'weight' => 10,
-  );
-  return $info;
-}
-
-/**
- * Alter the FileTransfer class registry.
- *
- * @param array $filetransfer_info
- *   Reference to a nested array containing information about the FileTransfer
- *   class registry.
- *
- * @see hook_filetransfer_info()
- */
-function hook_filetransfer_info_alter(&$filetransfer_info) {
-  // Remove the FTP option entirely.
-  unset($filetransfer_info['ftp']);
-  // Make sure the SSH option is listed first.
-  $filetransfer_info['ssh']['weight'] = -10;
 }
 
 /**

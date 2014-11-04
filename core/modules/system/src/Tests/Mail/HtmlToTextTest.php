@@ -8,6 +8,7 @@
 namespace Drupal\system\Tests\Mail;
 
 use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Site\Settings;
 use Drupal\simpletest\WebTestBase;
 
@@ -50,7 +51,7 @@ class HtmlToTextTest extends WebTestBase {
    *   set of tags supported by drupal_html_to_text().
    */
   protected function assertHtmlToText($html, $text, $message, $allowed_tags = NULL) {
-    preg_match_all('/<([a-z0-6]+)/', drupal_strtolower($html), $matches);
+    preg_match_all('/<([a-z0-6]+)/', Unicode::strtolower($html), $matches);
     $tested_tags = implode(', ', array_unique($matches[1]));
     $message .= ' (' . $tested_tags . ')';
     $result = drupal_html_to_text($html, $allowed_tags);
@@ -242,8 +243,8 @@ class HtmlToTextTest extends WebTestBase {
     if (!$pass) {
       $this->verbose($this->stringToHtml($output));
     }
-    $output_upper = drupal_strtoupper($output);
-    $upper_input = drupal_strtoupper($input);
+    $output_upper = Unicode::strtoupper($output);
+    $upper_input = Unicode::strtoupper($input);
     $upper_output = drupal_html_to_text($upper_input);
     $pass = $this->assertEqual(
       $upper_output,
