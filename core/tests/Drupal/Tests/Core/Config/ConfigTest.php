@@ -41,23 +41,20 @@ class ConfigTest extends UnitTestCase {
    *
    * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
    */
-  protected $event_dispatcher;
+  protected $eventDispatcher;
 
   /**
    * Typed Config.
    *
    * @var \Drupal\Core\Config\TypedConfigManagerInterface|\PHPUnit_Framework_MockObject_MockObject
    */
-  protected $typed_config;
+  protected $typedConfig;
 
-  /**
-   * Setup.
-   */
   public function setUp() {
     $this->storage = $this->getMock('Drupal\Core\Config\StorageInterface');
-    $this->event_dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
-    $this->typed_config = $this->getMock('\Drupal\Core\Config\TypedConfigManagerInterface');
-    $this->config = new Config('config.test', $this->storage, $this->event_dispatcher, $this->typed_config);
+    $this->eventDispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
+    $this->typedConfig = $this->getMock('\Drupal\Core\Config\TypedConfigManagerInterface');
+    $this->config = new Config('config.test', $this->storage, $this->eventDispatcher, $this->typedConfig);
   }
 
   /**
@@ -67,7 +64,7 @@ class ConfigTest extends UnitTestCase {
    * @dataProvider setNameProvider
    */
   public function testSetName($name) {
-     // Set the name.
+    // Set the name.
     $this->config->setName($name);
 
     // Check that the name has been set correctly.
@@ -152,7 +149,7 @@ class ConfigTest extends UnitTestCase {
    * @covers ::setSettingsOverride
    * @dataProvider overrideDataProvider
    */
-  public function testOverrideData($data, $moduleData, $settingData) {
+  public function testOverrideData($data, $module_data, $setting_data) {
     // Set initial data.
     $this->config->setData($data);
 
@@ -163,35 +160,35 @@ class ConfigTest extends UnitTestCase {
     $this->config->save();
 
     // Set module override data and check value before and after save.
-    $this->config->setModuleOverride($moduleData);
-    $this->assertConfigDataEquals($moduleData);
+    $this->config->setModuleOverride($module_data);
+    $this->assertConfigDataEquals($module_data);
     $this->config->save();
-    $this->assertConfigDataEquals($moduleData);
+    $this->assertConfigDataEquals($module_data);
 
     // Set setting override data and check value before and after save.
-    $this->config->setSettingsOverride($settingData);
-    $this->assertConfigDataEquals($settingData);
+    $this->config->setSettingsOverride($setting_data);
+    $this->assertConfigDataEquals($setting_data);
     $this->config->save();
-    $this->assertConfigDataEquals($settingData);
+    $this->assertConfigDataEquals($setting_data);
 
     // Set module overrides again to ensure override order is correct.
-    $this->config->setModuleOverride($moduleData);
+    $this->config->setModuleOverride($module_data);
 
-    // setting data should be overriding module data.
-    $this->assertConfigDataEquals($settingData);
+    // Setting data should be overriding module data.
+    $this->assertConfigDataEquals($setting_data);
     $this->config->save();
-    $this->assertConfigDataEquals($settingData);
+    $this->assertConfigDataEquals($setting_data);
 
     // Check original data has not changed.
     $this->assertOriginalConfigDataEquals($data, FALSE);
 
     // Check setting overrides are returned with $apply_overrides = TRUE.
-    $this->assertOriginalConfigDataEquals($settingData, TRUE);
+    $this->assertOriginalConfigDataEquals($setting_data, TRUE);
 
     // Check that $apply_overrides defaults to TRUE.
-    foreach ($settingData as $key => $value) {
-      $configValue = $this->config->getOriginal($key);
-      $this->assertEquals($value, $configValue);
+    foreach ($setting_data as $key => $value) {
+      $config_value = $this->config->getOriginal($key);
+      $this->assertEquals($value, $config_value);
     }
   }
 
@@ -212,7 +209,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that exception is thrown if key in value contains a dot.
    *
    * @covers ::set
-   * @expectedException \Drupal\Core\Config\ConfigValueException
+   * @expectedException \Drupal\Core\Config\configValueException
    */
   public function testSetValidation() {
     $this->config->set('testData', array('dot.key' => 1));
@@ -284,11 +281,11 @@ class ConfigTest extends UnitTestCase {
       // Check that values are cleared.
       $this->config->set($key, $value);
       // Check each nested value.
-      foreach($value as $nestedKey => $nestedValue) {
-        $fullNestedKey = $key . '.' . $nestedKey;
-        $this->assertEquals($nestedValue, $this->config->get($fullNestedKey));
-        $this->config->clear($fullNestedKey);
-        $this->assertNull($this->config->get($fullNestedKey));
+      foreach($value as $nested_key => $nested_value) {
+        $full_nested_key = $key . '.' . $nested_key;
+        $this->assertEquals($nested_value, $this->config->get($full_nested_key));
+        $this->config->clear($full_nested_key);
+        $this->assertNull($this->config->get($full_nested_key));
       }
     }
   }
@@ -299,13 +296,13 @@ class ConfigTest extends UnitTestCase {
    * @covers ::delete
    * @dataProvider overrideDataProvider
    */
-  public function testDelete($data, $moduleData) {
+  public function testDelete($data, $module_data) {
     // Set initial data.
     foreach ($data as $key => $value) {
       $this->config->set($key, $value);
     }
     // Set overrides.
-    $this->config->setModuleOverride($moduleData);
+    $this->config->setModuleOverride($module_data);
 
     // Save.
     $this->config->save();
@@ -314,8 +311,8 @@ class ConfigTest extends UnitTestCase {
     $this->assertOriginalConfigDataEquals($data, FALSE);
 
     // Check overrides have been set.
-    $this->assertConfigDataEquals($moduleData);
-    $this->assertOriginalConfigDataEquals($moduleData, TRUE);
+    $this->assertConfigDataEquals($module_data);
+    $this->assertOriginalConfigDataEquals($module_data, TRUE);
 
     // Check that config is new.
     $this->assertFalse($this->config->isNew());
@@ -330,9 +327,9 @@ class ConfigTest extends UnitTestCase {
     }
 
     // Check that overrides have persisted.
-    foreach ($moduleData as $key => $value) {
-      $this->assertConfigDataEquals($moduleData);
-      $this->assertOriginalConfigDataEquals($moduleData, TRUE);
+    foreach ($module_data as $key => $value) {
+      $this->assertConfigDataEquals($module_data);
+      $this->assertOriginalConfigDataEquals($module_data, TRUE);
     }
   }
 
@@ -342,15 +339,15 @@ class ConfigTest extends UnitTestCase {
    * @covers ::merge
    * @dataProvider mergeDataProvider
    */
-  public function testMerge($data, $dataToMerge, $mergedData) {
+  public function testMerge($data, $data_to_merge, $merged_data) {
     // Set initial data.
     $this->config->setData($data);
 
     // Data to merge.
-    $this->config->merge($dataToMerge);
+    $this->config->merge($data_to_merge);
 
     // Check that data has merged correctly.
-    $this->assertEquals($mergedData, $this->config->getRawData());
+    $this->assertEquals($merged_data, $this->config->getRawData());
   }
 
   /**
@@ -403,7 +400,7 @@ class ConfigTest extends UnitTestCase {
       ),
     );
     // Name must not contain : ? * < > " ' / \
-    foreach (array(':', '?', '*', '<', '>', '"',"'",'/','\\') as $char) {
+    foreach (array(':', '?', '*', '<', '>', '"', "'", '/', '\\') as $char) {
       $name = 'name.' . $char;
       $return[] = array(
         $name,
@@ -433,7 +430,7 @@ class ConfigTest extends UnitTestCase {
         array(
           'a' => 'settingValue'
         ),
-      )
+      ),
     );
   }
 
@@ -467,7 +464,7 @@ class ConfigTest extends UnitTestCase {
           ),
           'c' => array(
             'f' => 3
-          )
+          ),
         ),
       ),
     );
@@ -477,6 +474,7 @@ class ConfigTest extends UnitTestCase {
    * Asserts all config data equals $data provided.
    *
    * @param array $data
+   *   Config data to be checked.
    */
   public function assertConfigDataEquals($data) {
     foreach ($data as $key => $value) {
@@ -488,12 +486,15 @@ class ConfigTest extends UnitTestCase {
    * Asserts all original config data equals $data provided.
    *
    * @param array $data
+   *   Config data to be checked.
    * @param bool $apply_overrides
+   *   Apply any overrides to the original data.
    */
   public function assertOriginalConfigDataEquals($data, $apply_overrides) {
     foreach ($data as $key => $value) {
-      $configValue = $this->config->getOriginal($key, $apply_overrides);
-      $this->assertEquals($value, $configValue);
+      $config_value = $this->config->getOriginal($key, $apply_overrides);
+      $this->assertEquals($value, $config_value);
     }
   }
+
 }
