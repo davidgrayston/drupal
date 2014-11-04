@@ -210,7 +210,7 @@ class ConfigTest extends UnitTestCase {
    * Checks that exception is thrown if key in value contains a dot.
    *
    * @covers ::set
-   * @expectedException \Drupal\Core\Config\configValueException
+   * @expectedException \Drupal\Core\Config\ConfigValueException
    */
   public function testSetValidation() {
     $this->config->set('testData', array('dot.key' => 1));
@@ -282,7 +282,7 @@ class ConfigTest extends UnitTestCase {
       // Check that values are cleared.
       $this->config->set($key, $value);
       // Check each nested value.
-      foreach($value as $nested_key => $nested_value) {
+      foreach ($value as $nested_key => $nested_value) {
         $full_nested_key = $key . '.' . $nested_key;
         $this->assertEquals($nested_value, $this->config->get($full_nested_key));
         $this->config->clear($full_nested_key);
