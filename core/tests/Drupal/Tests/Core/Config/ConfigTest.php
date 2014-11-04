@@ -363,7 +363,7 @@ class ConfigTest extends UnitTestCase {
         array('a' => 2, 'e' => 4, 'c' => array('f' => 5)),
         // Data merged.
         array('a' => 2, 'b' => 2, 'c' => array('d' => 3, 'f' => 5), 'e' => 4),
-      )
+      ),
     );
   }
 
@@ -407,7 +407,7 @@ class ConfigTest extends UnitTestCase {
         $name,
         String::format('Invalid character in Config object name @name.', array(
           '@name' => $name,
-        ))
+        )),
       );
     }
     return $return;
@@ -421,15 +421,15 @@ class ConfigTest extends UnitTestCase {
       array(
         // Original data.
         array(
-          'a' => 'originalValue'
+          'a' => 'originalValue',
         ),
         // Module overrides.
         array(
-          'a' => 'moduleValue'
+          'a' => 'moduleValue',
         ),
         // Setting overrides.
         array(
-          'a' => 'settingValue'
+          'a' => 'settingValue',
         ),
       ),
     );
@@ -458,13 +458,13 @@ class ConfigTest extends UnitTestCase {
       array(
         array(
           'a' => array(
-            'd' => 1
+            'd' => 1,
           ),
           'b' => array(
-            'e' => 2
+            'e' => 2,
           ),
           'c' => array(
-            'f' => 3
+            'f' => 3,
           ),
         ),
       ),
