@@ -76,7 +76,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides config names to test.
    *
-   * @see \Drupal\Tests\Core\Config::testSetName()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testSetName()
    */
   public function setNameProvider() {
     return array(
@@ -330,7 +330,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides data to test merges.
    *
-   * @see \Drupal\Tests\Core\Config::testMerge()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testMerge()
    */
   public function mergeDataProvider() {
     return array(
@@ -358,7 +358,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides data to test name validation.
    *
-   * @see \Drupal\Tests\Core\Config::testValidateNameException()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testValidateNameException()
    */
   public function validateNameProvider() {
     $return = array(
@@ -394,8 +394,8 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides override data.
    *
-   * @see \Drupal\Tests\Core\Config::testOverrideData()
-   * @see \Drupal\Tests\Core\Config::testDelete()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testOverrideData()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testDelete()
    */
   public function overrideDataProvider() {
     return array(
@@ -419,7 +419,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides simple test data.
    *
-   * @see \Drupal\Tests\Core\Config::testClear()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testClear()
    */
   public function simpleDataProvider() {
     return array(
@@ -436,11 +436,11 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides nested test data.
    *
-   * @see \Drupal\Tests\Core\Config::testSetData()
-   * @see \Drupal\Tests\Core\Config::testSave()
-   * @see \Drupal\Tests\Core\Config::testSetValue()
-   * @see \Drupal\Tests\Core\Config::testInitWithData()
-   * @see \Drupal\Tests\Core\Config::testNestedClear()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testSetData()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testSave()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testSetValue()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testInitWithData()
+   * @see \Drupal\Tests\Core\Config\ConfigTest::testNestedClear()
    */
   public function nestedDataProvider() {
     return array(
