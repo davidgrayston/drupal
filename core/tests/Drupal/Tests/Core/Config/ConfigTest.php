@@ -217,6 +217,20 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
+   * Checks that a single value cannot be overwritten with a nested value.
+   *
+   * @covers ::set
+   * @expectedException PHPUnit_Framework_Error_Warning
+   */
+  public function testSetIllegalOffsetValue() {
+    // Set a single value.
+    $this->config->set('testData', 1);
+
+    // Attempt to treat the single value as a nested item.
+    $this->config->set('testData.illegalOffset', 1);
+  }
+
+  /**
    * Checks that config can be initialized with data.
    *
    * @covers ::initWithData
