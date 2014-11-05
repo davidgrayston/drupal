@@ -58,8 +58,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that the config name is set correctly.
-   *
    * @covers ::setName
    * @dataProvider setNameProvider
    */
@@ -92,8 +90,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that isNew is set correctly.
-   *
    * @covers ::isNew
    */
   public function testIsNew() {
@@ -106,8 +102,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that data is set correctly.
-   *
    * @covers ::setData
    * @dataProvider nestedDataProvider
    */
@@ -118,8 +112,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that original data is set when config is saved.
-   *
    * @covers ::save
    * @dataProvider nestedDataProvider
    */
@@ -143,8 +135,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that overrides are returned by get method and original data is maintained.
-   *
    * @covers ::setModuleOverride
    * @covers ::setSettingsOverride
    * @covers ::getOriginal
@@ -194,8 +184,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that data is set correctly.
-   *
    * @covers ::set
    * @dataProvider nestedDataProvider
    */
@@ -207,8 +195,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that exception is thrown if key in value contains a dot.
-   *
    * @covers ::set
    * @expectedException \Drupal\Core\Config\ConfigValueException
    */
@@ -217,8 +203,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that a single value cannot be overwritten with a nested value.
-   *
    * @covers ::set
    * @expectedException PHPUnit_Framework_Error_Warning
    */
@@ -231,8 +215,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that config can be initialized with data.
-   *
    * @covers ::initWithData
    * @dataProvider nestedDataProvider
    */
@@ -256,8 +238,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks clear.
-   *
    * @covers ::clear
    * @dataProvider simpleDataProvider
    */
@@ -272,8 +252,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks clearing of nested data.
-   *
    * @covers ::clear
    * @dataProvider nestedDataProvider
    */
@@ -292,8 +270,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that config delete is working correctly.
-   *
    * @covers ::delete
    * @dataProvider overrideDataProvider
    */
@@ -335,8 +311,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that data merges correctly.
-   *
    * @covers ::merge
    * @dataProvider mergeDataProvider
    */
@@ -368,8 +342,6 @@ class ConfigTest extends UnitTestCase {
   }
 
   /**
-   * Checks that name validation exception are thrown.
-   *
    * @covers ::validateName
    * @expectedException \Drupal\Core\Config\ConfigNameException
    * @dataProvider validateNameProvider
