@@ -76,7 +76,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides config names to test.
    *
-   * @see Drupal\Tests\Core\Config::testSetName()
+   * @see \Drupal\Tests\Core\Config::testSetName()
    */
   public function setNameProvider() {
     return array(
