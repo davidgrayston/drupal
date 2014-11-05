@@ -76,7 +76,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides config names to test.
    *
-   * @see testSetName()
+   * @see Drupal\Tests\Core\Config::testSetName()
    */
   public function setNameProvider() {
     return array(
@@ -330,7 +330,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides data to test merges.
    *
-   * @see testMerge
+   * @see Drupal\Tests\Core\Config::testMerge()
    */
   public function mergeDataProvider() {
     return array(
@@ -358,7 +358,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides data to test name validation.
    *
-   * @see testValidateNameException
+   * @see Drupal\Tests\Core\Config::testValidateNameException()
    */
   public function validateNameProvider() {
     $return = array(
@@ -394,8 +394,8 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides override data.
    *
-   * @see testOverrideData
-   * @see testDelete
+   * @see Drupal\Tests\Core\Config::testOverrideData()
+   * @see Drupal\Tests\Core\Config::testDelete()
    */
   public function overrideDataProvider() {
     return array(
@@ -419,7 +419,7 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides simple test data.
    *
-   * @see testClear
+   * @see Drupal\Tests\Core\Config::testClear()
    */
   public function simpleDataProvider() {
     return array(
@@ -436,11 +436,11 @@ class ConfigTest extends UnitTestCase {
   /**
    * Provides nested test data.
    *
-   * @see testSetData
-   * @see testSave
-   * @see testSetValue
-   * @see testInitWithData
-   * @see testNestedClear
+   * @see Drupal\Tests\Core\Config::testSetData()
+   * @see Drupal\Tests\Core\Config::testSave()
+   * @see Drupal\Tests\Core\Config::testSetValue()
+   * @see Drupal\Tests\Core\Config::testInitWithData()
+   * @see Drupal\Tests\Core\Config::testNestedClear()
    */
   public function nestedDataProvider() {
     return array(
