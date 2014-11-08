@@ -143,7 +143,7 @@ class NestedArray {
    * @param bool $force
    *   (optional) If TRUE, the value is forced into the structure even if it
    *   requires the deletion of an already existing non-array parent value. If
-   *   FALSE, PHP throws an error if trying to add into a value that is not an
+   *   FALSE, throw an Exception if trying to add into a value that is not an
    *   array. Defaults to FALSE.
    *
    * @see NestedArray::unsetValue()
@@ -159,6 +159,7 @@ class NestedArray {
           $ref = array();
         }
         else {
+          // Throw an Exception if $ref is set, but not an array.
           throw new \Exception('Scalar value cannot be used as array.');
         }
       }
