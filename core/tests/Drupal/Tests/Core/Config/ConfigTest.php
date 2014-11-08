@@ -206,14 +206,14 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * @covers ::set
-   * @expectedException Exception
+   * @expectedException \Drupal\Core\Config\ConfigValueException
    */
   public function testSetIllegalOffsetValue() {
+    // Set expected exception.
+    $this->setExpectedException('\Drupal\Core\Config\ConfigValueException', 'Could not set testData.illegalOffset. Scalar value cannot be used as array.');
+
     // Set a single value.
     $this->config->set('testData', 1);
-
-    // Set expected exception.
-    $this->setExpectedException('\Exception', 'Scalar value cannot be used as array.');
 
     // Attempt to treat the single value as a nested item.
     $this->config->set('testData.illegalOffset', 1);

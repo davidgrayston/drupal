@@ -183,6 +183,7 @@ abstract class ConfigBase {
    *
    * @throws \Drupal\Core\Config\ConfigValueException
    *   If $value is an array and any of its keys in any depth contains a dot.
+   *   If an existing scalar value is treated as an array when $key contains a dot.
    */
   public function set($key, $value) {
     // The dot/period is a reserved character; it may appear between keys, but
@@ -195,7 +196,14 @@ abstract class ConfigBase {
       $this->data[$key] = $value;
     }
     else {
-      NestedArray::setValue($this->data, $parts, $value);
+      try {
+        NestedArray::setValue($this->data, $parts, $value);
+      } catch (\Exception $e) {
+        throw new ConfigValueException(String::format('Could not set @key. @message', array(
+          '@key' => $key,
+          '@message' => $e->getMessage()
+        )));
+      }
     }
     return $this;
   }
