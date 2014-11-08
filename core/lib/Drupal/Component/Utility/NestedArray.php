@@ -154,8 +154,13 @@ class NestedArray {
     foreach ($parents as $parent) {
       // PHP auto-creates container arrays and NULL entries without error if $ref
       // is NULL, but throws an error if $ref is set, but not an array.
-      if ($force && isset($ref) && !is_array($ref)) {
-        $ref = array();
+      if (isset($ref) && !is_array($ref)) {
+        if ($force) {
+          $ref = array();
+        }
+        else {
+          throw new \Exception('Scalar value cannot be used as array.');
+        }
       }
       $ref = &$ref[$parent];
     }

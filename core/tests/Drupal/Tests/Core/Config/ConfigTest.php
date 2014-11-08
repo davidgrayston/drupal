@@ -206,11 +206,14 @@ class ConfigTest extends UnitTestCase {
 
   /**
    * @covers ::set
-   * @expectedException PHPUnit_Framework_Error_Warning
+   * @expectedException Exception
    */
   public function testSetIllegalOffsetValue() {
     // Set a single value.
     $this->config->set('testData', 1);
+
+    // Set expected exception.
+    $this->setExpectedException('\Exception', 'Scalar value cannot be used as array.');
 
     // Attempt to treat the single value as a nested item.
     $this->config->set('testData.illegalOffset', 1);
