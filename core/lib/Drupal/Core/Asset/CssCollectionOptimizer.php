@@ -90,6 +90,8 @@ class CssCollectionOptimizer implements AssetCollectionOptimizerInterface {
       unset($css_assets[$order]['items']);
 
       switch ($css_group['type']) {
+        case 'inline':
+          // Optimise inline CSS the same as files.
         case 'file':
           // No preprocessing, single CSS asset: just use the existing URI.
           if (!$css_group['preprocess']) {

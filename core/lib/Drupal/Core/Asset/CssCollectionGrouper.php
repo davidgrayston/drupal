@@ -48,6 +48,8 @@ class CssCollectionGrouper implements AssetCollectionGrouperInterface {
       // items in the group must share the same information that would need to
       // be part of that HTML tag.
       switch ($item['type']) {
+        case 'inline':
+          // Group inline CSS the same as files.
         case 'file':
           // Group file items if their 'preprocess' flag is TRUE.
           // Help ensure maximum reuse of aggregate files by only grouping
@@ -56,7 +58,7 @@ class CssCollectionGrouper implements AssetCollectionGrouperInterface {
           break;
 
         case 'external':
-          // Do not group external items.
+          // Do not group inline or external items.
           $group_keys = FALSE;
           break;
       }

@@ -107,6 +107,19 @@ class CssCollectionRenderer implements AssetCollectionRendererInterface {
     for ($i = 0; $i < count($css_assets_keys); $i++) {
       $css_asset = $css_assets[$css_assets_keys[$i]];
       switch ($css_asset['type']) {
+        case 'inline':
+          // Render inline element.
+          $element = [
+            '#type' => 'html_tag',
+            '#tag' => 'style',
+            '#value' => $this->getCssFileContents($css_asset['data']),
+            '#attributes' => [
+              'type' => 'text/css',
+            ],
+            '#browsers' => $css_asset['browsers'],
+          ];
+          $elements[] = $element;
+          break;
         // For file items, there are three possibilities.
         // - There are up to 31 CSS assets on the page (some of which may be
         //   aggregated). In this case, output a LINK tag for file CSS assets.
@@ -215,4 +228,16 @@ class CssCollectionRenderer implements AssetCollectionRendererInterface {
     return $elements;
   }
 
+
+  /**
+   * Get CSS file contents.
+   *
+   * @param string $path
+   */
+  protected function getCssFileContents($path) {
+    if (!file_exists($path)) {
+      throw new \Exception('Invalid CSS asset path: ' . $path);
+    }
+    return file_get_contents($path);
+  }
 }
