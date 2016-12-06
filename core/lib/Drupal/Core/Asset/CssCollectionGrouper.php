@@ -58,7 +58,7 @@ class CssCollectionGrouper implements AssetCollectionGrouperInterface {
           break;
 
         case 'external':
-          // Do not group inline or external items.
+          // Do not group external items.
           $group_keys = FALSE;
           break;
       }
